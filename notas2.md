@@ -7,12 +7,17 @@ Bingo is a game that can take a variable number of players. We will not deal wit
 
 BINGO CARD:
 
-|B   I   N   G   O |    
+|B   I   N   G   O |
 |8   16  45  55  74|
+
 |1   25  31  51  62|
+
 |12  29  FR  49  65|
+
 |5   21  42  53  71|
-|6   18  36  47  68|                                                  
+
+|6   18  36  47  68|
+                                                  
 
 
 BINGO EXPLAINED:
