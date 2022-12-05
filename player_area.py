@@ -2,6 +2,7 @@ import selectors
 import socket
 import argparse
 from protocol import *
+from crypto import *
 
 sel = selectors.DefaultSelector()
 
@@ -16,8 +17,6 @@ def read(conn, mask):
     print('received: "%s"', str(data))
     if data:
         if isinstance(data, JoinMessage):
-            pass
-        elif isinstance(data, TextMessage):
             pass
     else:
         sel.unregister(conn)

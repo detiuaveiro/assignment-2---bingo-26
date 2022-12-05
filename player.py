@@ -2,6 +2,7 @@ import selectors
 import socket
 import argparse
 from protocol import *
+from crypto import *
 
 sel = selectors.DefaultSelector()
 
@@ -17,15 +18,14 @@ def read(conn, mask):
     if data:
         if isinstance(data, JoinMessage):
             pass
-        elif isinstance(data, TextMessage):
-            pass
     else:
         sel.unregister(conn)
         conn.close()
 
 args = argparse.ArgumentParser()
-args.add_argument('port', type=int, help='Port to listen on', metavar='PORT')
-args.add_argument('-area', '-a', type=int, default=5000, help='Player Area port', metavar='PLAYER_AREA_PORT')
+args.add_argument('port', type=int, help='Port to listen on', metavar='LISTEN_PORT')
+args.add_argument('--addr', type=str, help='Player Area IP address', metavar='ADDR', default='')
+args.add_argument('--area-port', type=int, default=5000, help='Player Area port', metavar='PLAYER_AREA_PORT')
 PORT = args.parse_args().port
 PLAYER_AREA_PORT = args.parse_args().area
 

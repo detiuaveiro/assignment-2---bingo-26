@@ -9,45 +9,19 @@ class Message:
         return pickle.dumps({"command": self.command})
     
 class JoinMessage(Message):
-    """Message to join a chat channel."""
-    def __init__(self, channel):
+    """Message to join a game session."""
+    def __init__(self, username):
         super().__init__("join")
-        self.channel = channel
+        self.username = username
     def __repr__(self):
-        return  pickle.dumps({"command" : self.command, "channel" : self.channel})
-
-class RegisterMessage(Message):
-    """Message to register username in the server."""
-    def __init__(self, user):
-        super().__init__("register")
-        self.user = user 
-    def __repr__(self):
-        return pickle.dumps({"command" : self.command, "user" : self.user}) 
-
-class TextMessage(Message):
-    """Message to chat with other clients."""
-    def __init__(self, message):
-        super().__init__("message")
-        self.message = message
-    def __repr__(self):
-        return pickle.dumps({"command": self.command, "message": self.message})
+        return  pickle.dumps({"command" : self.command, "username" : self.username})
 
 class BingoProtocol:
-
-    @classmethod
-    def register(cls, username: str) -> RegisterMessage:
-        """Creates a RegisterMessage object."""
-        return  RegisterMessage(username)
 
     @classmethod
     def join(cls, channel: str) -> JoinMessage:
         """Creates a JoinMessage object."""
         return JoinMessage(channel)
-
-    @classmethod
-    def message(cls, message: str, channel: str = None) -> TextMessage:
-        """Creates a TextMessage object."""
-        return TextMessage(message, channel)
 
     @classmethod
     def send_msg(cls, connection: socket, msg: Message):
@@ -71,19 +45,8 @@ class BingoProtocol:
         if "command" not in keys: raise ProtoBadFormat(msgBytes)
         command = text["command"]
         if command == "join":
-            if "channel" not in keys: raise ProtoBadFormat(msgBytes)
-            return JoinMessage(text["channel"])
-        elif command == "register":
-            if "user" not in keys: raise ProtoBadFormat(msgBytes)
-            return RegisterMessage(text["user"])
-        elif command == "message":
-            if "message" not in keys: raise ProtoBadFormat(msgBytes)
-            if "ts" not in keys: raise ProtoBadFormat(msgBytes)
-            if "channel" in keys:
-                return TextMessage(text["message"], text["channel"], int(text["ts"]))
-            else:
-                return TextMessage(text["message"], None, int(text["ts"]))
-
+            if "username" not in keys: raise ProtoBadFormat(msgBytes)
+            return JoinMessage(text["username"])
 
 class ProtoBadFormat(Exception):
     """Exception when source message is not Proto."""
