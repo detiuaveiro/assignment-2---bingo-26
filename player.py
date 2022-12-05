@@ -1,43 +1,30 @@
+from protocol import *
+from crypto import *
 import selectors
 import socket
 import argparse
-from protocol import *
-from crypto import *
 
 sel = selectors.DefaultSelector()
 
-def accept(sock, mask):
-    conn, addr = sock.accept()
-    print('accepted', conn, 'from', addr)
-    conn.setblocking(False)
-    sel.register(conn, selectors.EVENT_READ, read)
-
 def read(conn, mask):
-    data = BingoProtocol.recv_msg(conn)
-    print('received: "%s"', str(data))
+    data = BingoProtocol.rcv(conn)
     if data:
-        if isinstance(data, JoinMessage):
-            pass
+        if data["type"] == "ack":
+            print("ACK:", data["command"])
     else:
         sel.unregister(conn)
         conn.close()
 
 args = argparse.ArgumentParser()
-args.add_argument('port', type=int, help='Port to listen on', metavar='LISTEN_PORT')
-args.add_argument('--addr', type=str, help='Player Area IP address', metavar='ADDR', default='')
-args.add_argument('--area-port', type=int, default=5000, help='Player Area port', metavar='PLAYER_AREA_PORT')
-PORT = args.parse_args().port
-PLAYER_AREA_PORT = args.parse_args().area
+args.add_argument('--addr', type=str, help='Player Area IP address', metavar='ADDR', default='localhost')
+args.add_argument('-p', '--port', type=int, default=5000, help='Player Area port', metavar='PLAYER_AREA_PORT')
+parsed_args = args.parse_args()
 
-recv_sock = socket.socket()
-recv_sock.bind(('localhost', PORT))
-recv_sock.listen(100)
-recv_sock.setblocking(False)
-sel.register(recv_sock, selectors.EVENT_READ, accept)
-
-sock = socket.socket()
-sock.connect(('localhost', PLAYER_AREA_PORT))
-sock.sendall(b'hello')
+sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+sock.connect((parsed_args.addr, parsed_args.port))
+sel.register(sock, selectors.EVENT_READ, read)
+BingoProtocol.join(sock)
 
 while True:
     events = sel.select()
