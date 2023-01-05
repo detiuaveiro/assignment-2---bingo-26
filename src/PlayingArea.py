@@ -45,7 +45,8 @@ class PlayingArea:
                 self.handlers[data["type"]](conn, data["data"])
             except Exception as e:
                 print("Invalid message received")
-                # print("Error:", e)
+                print("Error:", e)
+                exit(1)
         else:
             self.close_conn(conn)
 

@@ -30,7 +30,8 @@ class User:
                 self.handlers[data["type"]](conn, data["data"])
             except Exception as e:
                 print("Invalid message received")
-                # print("Error:", e)
+                print("Error:", e)
+                exit(1)
         else:
             print("Connection closed by playing area:", conn.getpeername())
             self.sel.unregister(conn)

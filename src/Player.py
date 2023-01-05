@@ -15,4 +15,5 @@ class Player(User):
         self.sym_key = Scrypt.generate_symmetric_key()
         self.iv = Scrypt.generate_iv()
         self.card = random.sample(range(0, 100), 25)
-        self.card = Scrypt.encrypt(self.sym_key, self.iv, self.card)
+        for i in range(len(self.card)):
+            self.card[i] = Scrypt.encrypt(self.sym_key, self.iv, str(self.card[i]), "CBC")

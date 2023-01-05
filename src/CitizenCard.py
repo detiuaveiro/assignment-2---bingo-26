@@ -11,43 +11,41 @@ lib = '/usr/lib/x86_64-linux-gnu/pkcs11/opensc-pkcs11.so'
 
 pkcs11 = PyKCS11.PyKCS11Lib()
 pkcs11.load(lib)
-slots = pkcs11.getSlotList(tokenPresent=True)
+slot = pkcs11.getSlotList(tokenPresent=True)[0]
 
-all_attr = list(PyKCS11.CKA.keys())
+assert "Auth" in pkcs11.getTokenInfo(slot).label
 
-#Filter attributes
-all_attributes = [e for e in all_attr if isinstance(e, int)]
+session = pkcs11.openSession(slot)
+session.login("9792")
 
-for slot in slots:
-    print(pkcs11.getTokenInfo(slot))
-    session = pkcs11.openSession(slot)
-    session.login(getpass("PIN: "))
+private_key = session.findObjects([
+                    (PyKCS11.CKA_CLASS, PyKCS11.CKO_PRIVATE_KEY),
+                    (PyKCS11.CKA_LABEL, "CITIZEN AUTHENTICATION KEY")
+                    ])[0]
 
-    # #### Search for objects and extract reference to private key and certificate
+cert_obj = session.findObjects([
+                    (PyKCS11.CKA_CLASS, PyKCS11.CKO_CERTIFICATE),
+                    (PyKCS11.CKA_LABEL, 'CITIZEN AUTHENTICATION CERTIFICATE')
+                    ])[0]
+cert_der_data = bytes(cert_obj.to_dict()['CKA_VALUE'])
+cert = x509.load_der_x509_certificate(cert_der_data, db())
+public_key = cert.public_key()
 
-# print("-------------------------------")
-
-# for slot in slots:
-#     session = pkcs11.openSession(slot)
-#     # session.login('1111')
-
-#     for obj in session.findObjects():
-#         attr = session.getAttributeValue(obj, all_attributes)
-
-#         attrDict = dict(list(zip(all_attributes, attr)))
-#         print("Type:", PyKCS11.CKO[attrDict[PyKCS11.CKA_CLASS]], "\tLabel:", attrDict[PyKCS11.CKA_LABEL])
-
-# print("-------------------------------")
+text = b'text to sign'
+signature = bytes(session.sign(private_key, text, PyKCS11.Mechanism(PyKCS11.CKM_SHA1_RSA_PKCS, None)))
+print("signature: ", binascii.hexlify(signature))
 
 
-# session = pkcs11.openSession(slots[0])
-# # session.login('1111')
-# cert_obj = session.findObjects([
-#                     (PyKCS11.CKA_CLASS, PyKCS11.CKO_CERTIFICATE),
-#                     (PyKCS11.CKA_LABEL, 'CITIZEN AUTHENTICATION CERTIFICATE')
-#                     ])[0]
+md = Hash(SHA1(), backend=db())
+md.update(text)
+digest = md.finalize()
 
-# print("Printing")
-# print(cert_obj)
 
-# cert_der_data = bytes(cert_obj.to_dict()['CKA_VALUE'])
+public_key = cert.public_key()
+
+public_key.verify(
+    signature,
+    digest,
+    PKCS1v15(),
+    SHA1()
+)

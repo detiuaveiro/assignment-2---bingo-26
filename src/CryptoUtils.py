@@ -3,10 +3,8 @@ import os
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives.padding import PKCS7
 
-from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.asymmetric import rsa
-from cryptography.hazmat.primitives.asymmetric import padding
+from cryptography.hazmat.primitives import serialization, hashes
+from cryptography.hazmat.primitives.asymmetric import rsa, padding
 
 class Scrypt:
     def algorithm_mode(mode, iv):
@@ -23,8 +21,8 @@ class Scrypt:
     generate_iv = lambda: os.urandom(16)
 
     def encrypt(content, key, iv, mode):
-        padder = PKCS7(algorithms.AES.block_size).padder()
-        content = padder.update(content) + padder.finalize()
+        # padder = PKCS7(algorithms.AES.block_size).padder()
+        # content = padder.update(content) + padder.finalize()
         cipher = Cipher(algorithms.AES(key), self.algorithm_mode(mode, iv))
         encryptor = cipher.encryptor()
         ct = encryptor.update(content) + encryptor.finalize()
@@ -34,8 +32,8 @@ class Scrypt:
         cipher = Cipher(algorithms.AES(key), self.algorithm_mode(mode, iv))
         decryptor = cipher.decryptor()
         content = decryptor.update(ct) + decryptor.finalize()
-        unpadder = PKCS7(algorithms.AES.block_size).unpadder()
-        content = unpadder.update(content) + unpadder.finalize()
+        # unpadder = PKCS7(algorithms.AES.block_size).unpadder()
+        # content = unpadder.update(content) + unpadder.finalize()
         return content
 
 

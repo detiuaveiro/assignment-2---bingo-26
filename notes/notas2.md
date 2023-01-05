@@ -31,3 +31,36 @@ SMARTCARD GUIDE:
 https://pyscard.sourceforge.io/user-guide.html#pyscard-user-guide
 
 
+# get citizen card
+cert_obj = session.findObjects([
+                    (PyKCS11.CKA_CLASS, PyKCS11.CKO_CERTIFICATE),
+                    (PyKCS11.CKA_LABEL, 'CITIZEN AUTHENTICATION CERTIFICATE')
+                    ])[0]
+cert_der_data = bytes(cert_obj.to_dict()['CKA_VALUE'])
+public_key = x509.load_der_x509_certificate(cert_der_data, db()).public_key()
+
+private_key = session.findObjects([
+                    (PyKCS11.CKA_CLASS, PyKCS11.CKO_PRIVATE_KEY),
+                    (PyKCS11.CKA_LABEL, 'CITIZEN AUTHENTICATION KEY')
+                    ])[0]
+
+data = b'Hello World'
+signature = session.sign(private_key, data, PyKCS11.Mechanism(PyKCS11.CKM_SHA1_RSA_PKCS, None))
+print("Signature: ", signature)
+print("Signature: ", binascii.hexlify(signature))
+exit()
+
+# hash
+h = Hash(SHA1())
+h.update(data)
+digest = h.finalize()
+print("Hash: ", digest)
+print("Hash: ", binascii.hexlify(digest))
+
+# verify hash
+assert public_key.verify(
+    signature,
+    digest,
+    PKCS1v15(),
+    SHA1()
+)
