@@ -10,6 +10,6 @@ parsed_args = args.parse_args()
 
 pin = getpass("Enter PIN: ")
 
-caller = Caller(parsed_args.nickname, parsed_args.addr, parsed_args.port)
+caller = Caller(parsed_args.nickname, parsed_args.addr, parsed_args.port, pin)
 print("Caller trying to connect to playing area on port", parsed_args.port)
 caller.run()

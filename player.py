@@ -14,6 +14,6 @@ if nickname == 'player':
 
 pin = getpass("Enter PIN: ")
 
-player = Player(parsed_args.addr, parsed_args.port)
+player = Player(parsed_args.nickname, parsed_args.addr, parsed_args.port, pin)
 print("Player trying to connect to playing area on port", parsed_args.port)
 player.run()

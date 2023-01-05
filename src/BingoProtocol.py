@@ -1,31 +1,33 @@
 import pickle
 import socket
 
+
+def msg_handler(func):
+    """
+    Decorator to handle sending messages
+    """
+    def wrapper(*args, **kwargs):
+        msg = {
+            "type": func.__name__,
+            "data": func(*args, **kwargs)
+        }
+        if args[1] is not None:
+            args[0].send(args[1], pickle.dumps(msg))
+        return msg
+    return wrapper
+
+
 class BingoProtocol:
 
     def __init__(self):
         pass
 
-
-    def msg_handler(func):
-        """
-        Decorator to handle sending messages
-        """
-        def wrapper(*args, **kwargs):
-            msg = {
-                "type": func.__name__,
-                "data": func(*args, **kwargs)
-            }
-            if args[1] is not None:
-                args[0].send(args[1], pickle.dumps(msg))
-            return msg
-        return wrapper
-
-
     @msg_handler
-    def join(self, sock: socket.socket, cc, client: str): 
+    def join(self, sock: socket.socket, cc, client: str, nickname: str, public_key: bytes): 
         return {
-            "client": client
+            "client": client,
+            "nickname": nickname,
+            "public_key": public_key
         }
 
 
@@ -33,7 +35,41 @@ class BingoProtocol:
     def join_response(self, sock: socket.socket, accepted: bool, sequence_number: int): 
         return {
             "accepted": accepted, 
-            "SN": sequence_number
+            "seq": sequence_number
+        }
+
+    
+    @msg_handler
+    def start(self, sock: socket.socket):
+        return {}
+
+    
+    @msg_handler
+    def start_response(self, sock: socket.socket, num_players: int):
+        return {
+            "num_players": num_players
+        }
+
+
+    @msg_handler
+    def card(self, sock: socket.socket, card: list, seq: int):
+        return {
+            "card": card,
+            "seq": seq
+        }
+
+
+    @msg_handler
+    def deck(self, sock: socket.socket, deck: list):
+        return {
+            "deck": deck
+        }
+
+
+    @msg_handler
+    def winner(self, sock: socket.socket, seq: int):
+        return {
+            "seq": seq
         }
 
 

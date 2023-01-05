@@ -5,9 +5,12 @@ msg = {
 }
 
 type:
+
 - join 
     data = { 
-        "client": "player" | "caller", 
+        "client": "player" | "caller",
+        "nickname": "...",
+        "public_key": "..."
     }
 
 - join_response
@@ -15,3 +18,25 @@ type:
         "accepted": True/False 
     }
 
+- start
+    data = {}
+
+- start_response
+    data = {
+        "num_players": ...,
+    }
+
+- card
+    data = {
+        "card": ...,
+    }
+
+- deck
+    data = {
+        "deck": ...,
+    }
+
+- winner
+    data = {
+        "winner": ...,
+    }

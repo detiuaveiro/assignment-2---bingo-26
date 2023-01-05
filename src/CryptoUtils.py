@@ -75,3 +75,10 @@ class Ascrypt:
         except:
             return False
         return True
+
+    def serialize_key(public_key):
+        return public_key.public_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PublicFormat.SubjectPublicKeyInfo
+        )
+        
