@@ -1,4 +1,5 @@
 import argparse
+from getpass import getpass
 from src.Player import Player
 
 args = argparse.ArgumentParser()
@@ -10,6 +11,8 @@ parsed_args = args.parse_args()
 nickname = parsed_args.nickname
 if nickname == 'player':
     nickname += parsed_args.port
+
+pin = getpass("Enter PIN: ")
 
 player = Player(parsed_args.addr, parsed_args.port)
 print("Player trying to connect to playing area on port", parsed_args.port)

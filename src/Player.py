@@ -3,10 +3,10 @@ from src.CryptoUtils import Scrypt
 import random
 
 class Player(User):
-    def __init__(self, nickname, parea_host, parea_port):
-        super().__init__(nickname, parea_host, parea_port)
+    def __init__(self, nickname, parea_host, parea_port, pin):
+        super().__init__(nickname, parea_host, parea_port, pin)
         # Join playing area as player
-        self.proto.join(self.sock, "player")
+        self.proto.join(self.sock, self.cc, "player")
 
         self.handlers = {
             "join_response": self.handle_join_response,

@@ -1,10 +1,10 @@
 import socket
 import selectors
 from src.BingoProtocol import BingoProtocol
-
+from src.CitizenCard import CitizenCard
 
 class User:
-    def __init__(self, nickname, parea_host, parea_port):
+    def __init__(self, nickname, parea_host, parea_port, pin):
         self.nickname = nickname
         # proto
         self.proto = BingoProtocol()
@@ -18,8 +18,7 @@ class User:
         # connect to playing area
         self.sock.connect((self.parea_host, self.parea_port))
         self.sel.register(self.sock, selectors.EVENT_READ, self.read)
-
-        # self.cc_key_pair ...
+        self.cc = None # replace by CitizenCard(pin)
 
 
     def read(self, conn, mask):

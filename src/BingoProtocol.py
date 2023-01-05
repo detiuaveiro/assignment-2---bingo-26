@@ -23,7 +23,7 @@ class BingoProtocol:
 
 
     @msg_handler
-    def join(self, sock: socket.socket, client: str): 
+    def join(self, sock: socket.socket, cc, client: str): 
         return {
             "client": client
         }
