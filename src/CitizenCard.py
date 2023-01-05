@@ -12,7 +12,6 @@ class CitizenCard:
         slot = pkcs11.getSlotList(tokenPresent=True)[0]
         assert "Auth" in pkcs11.getTokenInfo(slot).label
         self.session = pkcs11.openSession(slot)
-        pin = "9792"  # .......................... change this 
         self.session.login(pin)
         self.private_key = self.session.findObjects([
                             (PyKCS11.CKA_CLASS, PyKCS11.CKO_PRIVATE_KEY),
