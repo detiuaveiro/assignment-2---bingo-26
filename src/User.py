@@ -4,7 +4,8 @@ from src.BingoProtocol import BingoProtocol
 
 
 class User:
-    def __init__(self, parea_host, parea_port):
+    def __init__(self, nickname, parea_host, parea_port):
+        self.nickname = nickname
         # proto
         self.proto = BingoProtocol()
         
@@ -16,17 +17,20 @@ class User:
         self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         # connect to playing area
         self.sock.connect((self.parea_host, self.parea_port))
-        self.sel.register(self.sock, selectors.EVENT_READ, self.read)  
+        self.sel.register(self.sock, selectors.EVENT_READ, self.read)
+
+        # self.cc_key_pair ...
 
 
     def read(self, conn, mask):
         data = self.proto.rcv(conn)
         if data:
             print("Received:", data)
-            if data["type"] in self.handlers:
+            try:
                 self.handlers[data["type"]](conn, data["data"])
-            else:
-                print("Unknown type:", data["type"])
+            except Exception as e:
+                print("Invalid message received")
+                # print("Error:", e)
         else:
             print("Connection closed by playing area:", conn.getpeername())
             self.sel.unregister(conn)
@@ -34,9 +38,10 @@ class User:
             exit(0)
 
 
-    def join_response(self, conn: socket.socket, data: dict):
+    def handle_join_response(self, conn: socket.socket, data: dict):
         if data["accepted"]:
             print("Joined playing area")
+            self.SN = data["SN"] # sequence number
         else:
             print("Join request denied")
             self.sel.unregister(self.sock)

@@ -2,7 +2,6 @@ import socket
 import selectors
 from src.BingoProtocol import BingoProtocol
 from src.CryptoUtils import Ascrypt
-import logging
 
 
 class PlayingArea:
@@ -23,7 +22,6 @@ class PlayingArea:
         self.caller = {}
         self.playing = False
         # self.public_key, self.private_key = Ascrypt.generate_key_pair()
-        # - list of citizens that can act as callers
         # ...
         self.all_msgs = []
 
@@ -34,7 +32,7 @@ class PlayingArea:
 
     def accept(self, sock, mask):
         conn, addr = sock.accept()
-        print("Trying to join playing area", addr)
+        print("Trying to join playing area: ", addr)
         conn.setblocking(False)
         self.sel.register(conn, selectors.EVENT_READ, self.read)
 
@@ -43,31 +41,24 @@ class PlayingArea:
         data = self.proto.rcv(conn)
         if data:
             print("Received:", data)
-            if data["type"] in self.handlers:
+            try:
                 self.handlers[data["type"]](conn, data["data"])
-            else:
-                print("Unknown type:", data["type"])
+            except Exception as e:
+                print("Invalid message received")
+                # print("Error:", e)
         else:
-            if conn in self.players:
-                print("Connection closed by player: ", conn.getpeername())
-                del self.players[conn]
-            if conn in self.caller:
-                print("Connection closed by caller: ", conn.getpeername())
-                del self.caller[conn]
-            self.sel.unregister(conn)
-            conn.close()
+            self.close_conn(conn)
 
     
     def join(self, conn: socket.socket, data: dict):
         if data["client"] == "player":                
-            self.proto.join_response(conn, not self.playing)
+            self.proto.join_response(conn, not self.playing, len(self.players) + 1)
             if not self.playing:
                 self.players[conn] = conn.getpeername()
                 print("Player joined playing area, game in progress")
             else:
                 print("Join request denied")
-                self.sel.unregister(conn)
-                conn.close()
+                self.close_conn(conn)
         elif data["client"] == "caller":
             self.proto.join_response(conn, len(self.caller) == 0)
             if len(self.caller) == 0:
@@ -75,13 +66,22 @@ class PlayingArea:
                 print("Caller joined playing area")
             else:
                 print("Join request denied, caller already exists")
-                self.sel.unregister(conn)
-                conn.close()
+                self.close_conn(conn)
         else:
             self.proto.join_response(conn, False)
             print("Join request denied, unknown client")
-            self.sel.unregister(conn)
-            conn.close()
+            self.close_conn(conn)
+
+    
+    def close_conn(self, conn: socket.socket):
+        if conn in self.players:
+            print("Connection closed by player: ", conn.getpeername())
+            del self.players[conn]
+        if conn in self.caller:
+            print("Connection closed by caller: ", conn.getpeername())
+            del self.caller[conn]
+        self.sel.unregister(conn)
+        conn.close()
 
 
     def run(self):

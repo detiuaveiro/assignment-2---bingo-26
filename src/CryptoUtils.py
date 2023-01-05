@@ -19,9 +19,10 @@ class Scrypt:
         else:
             return modes.ECB()
 
-    def encrypt(content, mode):
-        key = os.urandom(32)
-        iv = os.urandom(16)
+    generate_symmetric_key = lambda: os.urandom(32)
+    generate_iv = lambda: os.urandom(16)
+
+    def encrypt(content, key, iv, mode):
         padder = PKCS7(algorithms.AES.block_size).padder()
         content = padder.update(content) + padder.finalize()
         cipher = Cipher(algorithms.AES(key), self.algorithm_mode(mode, iv))

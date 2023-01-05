@@ -4,34 +4,41 @@ import socket
 class BingoProtocol:
 
     def __init__(self):
-        self.msg = None
+        pass
 
 
-    def join(self, sock: socket.socket, client: str):
-        host, port = sock.getsockname()
-        self.msg = { 
-            "type": "join", 
-            "data" : {
-                "client": client,
-                "host": host, 
-                "port": port
+    def msg_handler(func):
+        """
+        Decorator to handle sending messages
+        """
+        def wrapper(*args, **kwargs):
+            msg = {
+                "type": func.__name__,
+                "data": func(*args, **kwargs)
             }
-        }
-        self.send(sock, pickle.dumps(self.msg))
+            if args[1] is not None:
+                args[0].send(args[1], pickle.dumps(msg))
+            return msg
+        return wrapper
 
-    
-    def join_response(self, sock: socket.socket, accepted: bool):
-        self.msg = {
-            "type": "join_response", 
-            "data": {
-                "accepted": accepted
-            }
+
+    @msg_handler
+    def join(self, sock: socket.socket, client: str): 
+        return {
+            "client": client
         }
-        self.send(sock, pickle.dumps(self.msg))
+
+
+    @msg_handler
+    def join_response(self, sock: socket.socket, accepted: bool, sequence_number: int): 
+        return {
+            "accepted": accepted, 
+            "SN": sequence_number
+        }
 
 
     def send(self, sock: socket.socket, msg: bytes):
-        msg_size = len(msg).to_bytes(2, "big")
+        msg_size = len(msg).to_bytes(4, "big")
         msg_to_send = msg_size + msg
         while len(msg_to_send) > 0:
             sent = sock.send(msg_to_send)
@@ -39,7 +46,7 @@ class BingoProtocol:
             
 
     def rcv(self, sock : socket.socket):
-        msg_size = int.from_bytes(sock.recv(2), "big")
+        msg_size = int.from_bytes(sock.recv(4), "big")
         if msg_size != 0:
             msg=b""
             while len(msg) < msg_size:

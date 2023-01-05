@@ -1,18 +1,13 @@
 from src.User import User
+import random
 
 class Caller(User):
-    def __init__(self, parea_host, parea_port):
-        super().__init__(parea_host, parea_port)   
-        # - nickname
-        # - random asymmetric key pair, generated just before their registration
-        #     - the private key is used to sign the player’s messages
-        #     - the public key is made available in the player profile
-        # - The Citizen Card authentication key pair
-        # - a random deck with N unique numbers
-
-        # join the game
+    def __init__(self, nickname, parea_host, parea_port):
+        super().__init__(nickname, parea_host, parea_port)
+        # Join playing area as caller
         self.proto.join(self.sock, "caller")
 
         self.handlers = {
-            "join_response": self.join_response,
-        } 
+            "join_response": self.handle_join_response,
+        }
+        self.deck = random.sample(range(1, 100), 100)
