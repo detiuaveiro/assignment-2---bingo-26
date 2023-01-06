@@ -23,18 +23,26 @@ class Scrypt:
     def encrypt(content, key, iv, mode):
         # padder = PKCS7(algorithms.AES.block_size).padder()
         # content = padder.update(content) + padder.finalize()
-        cipher = Cipher(algorithms.AES(key), self.algorithm_mode(mode, iv))
+        cipher = Cipher(algorithms.AES(key), Scrypt.algorithm_mode(mode, iv))
         encryptor = cipher.encryptor()
         ct = encryptor.update(content) + encryptor.finalize()
-        return ct, iv, key
+        return ct
 
-    def decrypt(ct, iv, key, mode):
-        cipher = Cipher(algorithms.AES(key), self.algorithm_mode(mode, iv))
+    def encrypt_list(_list, key, iv, mode, to_bytes=True):
+        if to_bytes:
+            return [Scrypt.encrypt(item.to_bytes(16, 'big'), key, iv, mode) for item in _list]
+        return [Scrypt.encrypt(item, key, iv, mode) for item in _list]
+
+    def decrypt(ct, key, iv, mode):
+        cipher = Cipher(algorithms.AES(key), Scrypt.algorithm_mode(mode, iv))
         decryptor = cipher.decryptor()
         content = decryptor.update(ct) + decryptor.finalize()
         # unpadder = PKCS7(algorithms.AES.block_size).unpadder()
         # content = unpadder.update(content) + unpadder.finalize()
         return content
+
+    def decrypt_list(_list, key, iv, mode):
+        return [int.from_bytes(Scrypt.decrypt(item, key, iv, mode), 'big') for item in _list]
 
 
 class Ascrypt:

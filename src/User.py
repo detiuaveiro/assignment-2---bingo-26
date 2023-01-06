@@ -9,6 +9,7 @@ class User:
         self.nickname = nickname
         self.seq = None
         self.cards = []
+        self.deck = []
 
         # proto
         self.proto = BingoProtocol()
@@ -55,6 +56,8 @@ class User:
         if data["accepted"]:
             print("Joined playing area")
             self.seq = data["seq"] # sequence number
+            if self.seq != 0:
+                self.cards.append((self.card, self.seq))
         else:
             print("Join request denied")
             self.sel.unregister(self.sock)
@@ -63,8 +66,7 @@ class User:
 
 
     def handle_card(self, conn: socket.socket, data: dict):
-        print(f"Received card from {data['seq']} {data['card']}")
-        #check of card is valid: TODO
+        self.cards.append((data["card"], data["seq"]))
 
 
     def get_winners(self):
@@ -83,6 +85,7 @@ class User:
                 winners.add(winner[0])
             else:
                 break
+        return winners
 
 
     def run(self):

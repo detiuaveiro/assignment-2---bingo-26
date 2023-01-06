@@ -1,8 +1,15 @@
 from src.BingoProtocol import BingoProtocol
+from src.CryptoUtils import Scrypt
+
+# sym_key = Scrypt.generate_symmetric_key()
+# iv = Scrypt.generate_iv()
+# deck = [1, 2, 3, 4]
+# deck_enc = Scrypt.encrypt_list(deck, sym_key, iv, "CBC")
+# print(Scrypt.decrypt_list(deck_enc, sym_key, iv, "CBC"))
 
 
-# proto = BingoProtocol()
-# print(proto.join(None, '...', 'test', b'', b''))
+proto = BingoProtocol()
+print(proto.join(None, '...', 'test', b'', b''))
 
 def get_winner(cards, deck):
     win_pos = []

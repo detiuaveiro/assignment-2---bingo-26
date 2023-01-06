@@ -60,9 +60,10 @@ class BingoProtocol:
 
 
     @msg_handler
-    def deck(self, sock: socket.socket, deck: list):
+    def deck(self, sock: socket.socket, deck: list, seq: int):
         return {
-            "deck": deck
+            "deck": deck,
+            "seq": seq
         }
 
 

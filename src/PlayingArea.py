@@ -52,11 +52,14 @@ class PlayingArea:
         self.sel.register(self.sock, selectors.EVENT_READ, self.accept)
 
         self.proto = BingoProtocol()
+        self.users_by_seq = {}        # {seq: conn}
         self.players = {}               # {conn: (seq, nickname, public_key)}
         self.caller = {}                # {conn: (seq, nickname, public_key)}
         self.current_id = 0
+        self.total_shuffles = 0
         self.playing = False            # blocks new players from joining
         self.checking_winner = False    # blocks new cards from being played
+        self.deck = []
         self.all_msgs = []
 
         # asymmetric encryption
@@ -78,6 +81,7 @@ class PlayingArea:
             self.proto.join_response(conn, not self.playing, self.current_id)
             if not self.playing:
                 self.players[conn] = (self.current_id, data["nickname"], data["public_key"])
+                self.users_by_seq[self.current_id] = conn
                 print("Player joined playing area")
             else:
                 print("Join request denied")
@@ -86,6 +90,7 @@ class PlayingArea:
             self.proto.join_response(conn, len(self.caller) == 0, 0)
             if len(self.caller) == 0:
                 self.caller[conn] = (0, data["nickname"], data["public_key"])
+                self.users_by_seq[0] = conn
                 print("Caller joined playing area")
             else:
                 print("Join request denied, caller already exists")
@@ -115,8 +120,22 @@ class PlayingArea:
 
     @caller_check
     def handle_deck(self, conn: socket.socket, data: dict):
+        # #commit deck
+        # self.deck = data["deck"]
+
+        # if self.total_shuffles < len(self.players):
+        #     self.proto.deck(self.users_by_seq[self.total_shuffles + 1], self.deck, data["seq"])
+        #     self.total_shuffles += 1
+
+        #     if self.total_shuffles == len(self.players):
+        #         self.proto.deck(self.users_by_seq[0], self.deck, data["seq"]) #send deck to caller
+                
+        # else:
+        #     # notify users to give its sym priv key
+        #     print("Asking for sym priv key")
+
         for c in self.other_conns(conn):
-            self.proto.deck(c, data["deck"])
+            self.proto.deck(c, data["deck"], data["seq"])
 
     
 
@@ -139,12 +158,12 @@ class PlayingArea:
         data = self.proto.rcv(conn)
         if data:
             print("Received:", data)
-            try:
-                self.handlers[data["type"]](conn, data["data"])
-            except Exception as e:
-                print("Invalid message received")
-                print("Error:", e)
-                exit(1)
+            # try:
+            self.handlers[data["type"]](conn, data["data"])
+            # except Exception as e:
+            #     print("Invalid message received")
+            #     print("Error:", e)
+            #     exit(1)
         else:
             self.close_conn(conn)
 
@@ -153,6 +172,7 @@ class PlayingArea:
     def close_conn(self, conn: socket.socket):
         if conn in self.players:
             print("Connection closed player: ", conn.getpeername())
+            del self.users_by_seq[self.players[conn][0]]
             del self.players[conn]
         if conn in self.caller:
             print("Connection closed caller: ", conn.getpeername())

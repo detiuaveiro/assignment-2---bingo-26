@@ -1,5 +1,5 @@
 from src.User import User
-from src.CryptoUtils import Ascrypt
+from src.CryptoUtils import Ascrypt, Scrypt
 import random
 import time
 
@@ -15,11 +15,12 @@ class Caller(User):
             "join_response": self.handle_join_response,
             "start": self.handle_start,
             "start_response": self.handle_start_response,
-            "card": self.handle_card
+            "card": self.handle_card,
+            "deck": self.handle_deck
         }
 
         # wait 30 seconds for players to join
-        time.sleep(30)
+        time.sleep(20)
         self.proto.start(self.sock)
 
         self.num_players = 0
@@ -34,6 +35,20 @@ class Caller(User):
 
 
     def handle_card(self, conn, data):
+        print("card from ", data["seq"])
         self.cards.append((data["card"], data["seq"]))
         if len(self.cards) == self.num_players:
-            self.proto.deck(self.sock, self.deck)       
+            self.proto.deck(self.sock, self.deck, self.seq)
+
+            # # shuffle deck and encrypt each number in deck with sym_key
+            # random.shuffle(self.deck)
+            # encrypted_deck = Scrypt.encrypt_list(self.deck, self.sym_key, self.iv, "CBC")
+
+
+    def handle_deck(self, conn, data: dict):
+        deck = data["deck"]
+
+        # TODO sign deck
+        print("last deck: ", deck)
+        self.proto.deck(self.sock, deck, self.seq)
+
