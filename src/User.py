@@ -38,7 +38,7 @@ class User:
     def read(self, conn, mask):
         data = self.proto.rcv(conn)
         if data:
-            print("Received:", data)
+            # print("Received:", data)
             try:
                 self.handlers[data["type"]](conn, data["data"])
             except Exception as e:
@@ -63,10 +63,6 @@ class User:
             self.sel.unregister(self.sock)
             self.sock.close()
             exit(0)
-
-
-    def handle_card(self, conn: socket.socket, data: dict):
-        self.cards.append((data["card"], data["seq"]))
 
 
     def get_winners(self):

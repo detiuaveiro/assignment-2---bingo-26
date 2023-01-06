@@ -6,16 +6,32 @@ msg = {
 
 type:
 
+- disqualify
+    data = {
+        "seq": ...,
+        "reason": "..."
+    }
+
+- get_logs
+    data = {}
+
+- logs_response
+    data = {
+        "logs": "..."
+    }
+
+
 - join 
     data = { 
         "client": "player" | "caller",
-        "nickname": "...",
-        "public_key": "..."
+        "nickname": str,
+        "public_key": str,
     }
 
 - join_response
     data = { 
-        "accepted": True/False 
+        "accepted": bool,
+        "seq": int
     }
 
 - start
@@ -23,20 +39,39 @@ type:
 
 - start_response
     data = {
-        "num_players": ...,
+        "num_players": int,
     }
 
 - card
     data = {
-        "card": ...,
+        "card": [],
     }
 
 - deck
     data = {
-        "deck": ...,
+        "deck": [],
     }
 
-- winner
+- final_deck
     data = {
-        "winner": ...,
+        "deck": [],
+    }
+
+- get_keys
+    data = {}
+
+- keys_response
+    data = {
+        "keys": [],
+    }
+
+- winners
+    data = {
+        "seq": int,
+        "winners": [],
+    }
+
+- final_winners
+    data = {
+        "winners": [],
     }

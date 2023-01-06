@@ -57,6 +57,7 @@ class PlayingArea:
         self.caller = {}                # {conn: (seq, nickname, public_key)}
         self.current_id = 0
         self.total_shuffles = 0
+        self.all_keys = {}
         self.playing = False            # blocks new players from joining
         self.checking_winner = False    # blocks new cards from being played
         self.deck = []
@@ -70,7 +71,10 @@ class PlayingArea:
             "start": self.handle_start,
             "card": self.handle_card,
             "deck": self.handle_deck,
-            "winner": self.handle_winner,
+            "final_deck": self.handle_final_deck,
+            "key": self.handle_key,
+            "winners": self.handle_winners,
+            "final_winners": self.handle_final_winners
         }
 
 
@@ -118,31 +122,46 @@ class PlayingArea:
 
 
 
-    @caller_check
+    @user_check
     def handle_deck(self, conn: socket.socket, data: dict):
-        # #commit deck
-        # self.deck = data["deck"]
+        #commit deck
+        self.deck = data["deck"]
 
-        # if self.total_shuffles < len(self.players):
-        #     self.proto.deck(self.users_by_seq[self.total_shuffles + 1], self.deck, data["seq"])
-        #     self.total_shuffles += 1
-
-        #     if self.total_shuffles == len(self.players):
-        #         self.proto.deck(self.users_by_seq[0], self.deck, data["seq"]) #send deck to caller
-                
-        # else:
-        #     # notify users to give its sym priv key
-        #     print("Asking for sym priv key")
-
-        for c in self.other_conns(conn):
-            self.proto.deck(c, data["deck"], data["seq"])
+        if self.total_shuffles < len(self.players):
+            self.proto.deck(self.users_by_seq[self.total_shuffles + 1], self.deck, data["seq"])
+            self.total_shuffles += 1
+    
+        elif self.total_shuffles == len(self.players):
+                self.proto.deck(self.users_by_seq[0], self.deck, data["seq"]) #send deck to caller
 
     
+    @caller_check
+    def handle_final_deck(self, conn: socket.socket, data: dict):
+        for c in self.other_conns(conn):
+            self.proto.final_deck(c, data["deck"])
+
 
     @user_check
-    def handle_winner(self, conn: socket.socket, data: dict):
+    def handle_key(self, conn: socket.socket, data: dict):
+        self.all_keys[data["seq"]] = data["key"]
+        # TODO enviar as keys por ordem q foram usadas
+        if len(self.all_keys) == len(self.players) + 1:
+            for c in self.players:
+                self.proto.keys(c, self.all_keys)
+            for c in self.caller:
+                self.proto.keys(c, self.all_keys)
+
+
+    @player_check
+    def handle_winners(self, conn: socket.socket, data: dict):
+        for c in self.caller:
+            self.proto.winners(c, data["seq"], data["winners"])
+
+
+    @caller_check
+    def handle_final_winners(self, conn: socket.socket, data: dict):
         for c in self.other_conns(conn):
-            self.proto.winner(c, data["winner"])
+            self.proto.final_winners(c, data["winners"])
 
 
 
@@ -158,12 +177,12 @@ class PlayingArea:
         data = self.proto.rcv(conn)
         if data:
             print("Received:", data)
-            # try:
-            self.handlers[data["type"]](conn, data["data"])
-            # except Exception as e:
-            #     print("Invalid message received")
-            #     print("Error:", e)
-            #     exit(1)
+            try:
+                self.handlers[data["type"]](conn, data["data"])
+            except Exception as e:
+                print("Invalid message received")
+                print("Error:", e)
+                exit(1)
         else:
             self.close_conn(conn)
 

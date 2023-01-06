@@ -13,23 +13,60 @@ class Player(User):
             "join_response": self.handle_join_response,
             "start": self.handle_start,
             "card": self.handle_card,
-            "deck": self.handle_deck
+            "deck": self.handle_deck,
+            "final_deck": self.handle_final_deck,
+            "keys": self.handle_keys,
+            "final_winners": self.handle_final_winners
         }
 
         self.card = random.sample(range(0, 100), 25)
 
 
     def handle_start(self, conn, data):
+        print("Game started")
         self.proto.card(self.sock, self.card, self.seq)
+        print("Card sent")
+
+    
+    def handle_card(self, conn, data):
+        print("Received card from ", data["seq"])
+        self.cards.append((data["card"], data["seq"]))
 
 
-    def handle_deck(self, conn, data: dict):
-        self.deck = data["deck"]
-        print("\n\nWinner:")
-        print(list(self.get_winners())[0])
+    def handle_deck(self, conn, data):
+        print("Deck received from ", data["seq"])
+        deck = data["deck"]
+        random.shuffle(deck)
+        self.proto.deck(self.sock, deck, self.seq)
+        print("Deck shuffled and sent")
+
+        # print("\n\nWinner:")
+        # print(list(self.get_winners())[0])
 
         # print("Deck received from ", data["seq"])
         # encrypted_deck = Scrypt.encrypt_list(data["deck"], self.sym_key, self.iv, "CBC", False)
         # random.shuffle(encrypted_deck)
         # print("Deck encrypted and shuffled")
         # self.proto.deck(self.sock, encrypted_deck, self.seq)
+
+
+    def handle_final_deck(self, conn, data):
+        print("Final deck received from caller")
+        self.deck = data["deck"]
+        self.proto.key(self.sock, self.seq, b"")
+        print("Key sent")
+
+
+    def handle_keys(self, conn, data):
+        print("Keys received")
+        winners = self.get_winners()
+        print("Winners calculated")
+        self.proto.winners(self.sock, self.seq, winners)
+
+
+    def handle_final_winners(self, conn, data):
+        print("Final winners received from caller")
+        print("Winners: ", data["winners"])
+
+        
+        

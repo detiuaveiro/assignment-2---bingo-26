@@ -23,6 +23,26 @@ class BingoProtocol:
         pass
 
     @msg_handler
+    def disqualify(self, sock: socket.socket, seq: int, reason: str):
+        return {
+            "seq": seq,
+            "reason": reason
+        }
+
+
+    @msg_handler
+    def get_logs(self, sock: socket.socket):
+        return {}
+
+
+    @msg_handler
+    def logs_response(self, sock: socket.socket, logs: list):
+        return {
+            "logs": logs
+        }
+
+
+    @msg_handler
     def join(self, sock: socket.socket, cc, client: str, nickname: str, public_key: bytes): 
         return {
             "client": client,
@@ -68,9 +88,38 @@ class BingoProtocol:
 
 
     @msg_handler
-    def winner(self, sock: socket.socket, seq: int):
+    def final_deck(self, sock: socket.socket, deck: list):
         return {
-            "seq": seq
+            "deck": deck,
+        }
+
+
+    @msg_handler
+    def key(self, sock: socket.socket, seq: int, key: bytes):
+        return {
+            "seq": seq,
+            "key": key
+        }
+
+
+    @msg_handler
+    def keys(self, sock: socket.socket, keys: dict):
+        return {
+            "keys": keys
+        }
+
+
+    @msg_handler
+    def winners(self, sock: socket.socket, seq:int, winners: list):
+        return {
+            "seq": seq,
+            "winners": winners
+        }
+
+    @msg_handler
+    def final_winners(self, sock: socket.socket, winners: list):
+        return {
+            "winners": winners
         }
 
 

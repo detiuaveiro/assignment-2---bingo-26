@@ -16,14 +16,17 @@ class Caller(User):
             "start": self.handle_start,
             "start_response": self.handle_start_response,
             "card": self.handle_card,
-            "deck": self.handle_deck
+            "deck": self.handle_deck,
+            "keys": self.handle_keys,
+            "winners": self.handle_winners
         }
 
         # wait 30 seconds for players to join
         time.sleep(20)
         self.proto.start(self.sock)
-
         self.num_players = 0
+        self.winners_recv = 0
+        self.winners = []
 
 
     def handle_start(self, conn, data):
@@ -35,20 +38,39 @@ class Caller(User):
 
 
     def handle_card(self, conn, data):
-        print("card from ", data["seq"])
+        print("Received card from ", data["seq"])
         self.cards.append((data["card"], data["seq"]))
         if len(self.cards) == self.num_players:
             self.proto.deck(self.sock, self.deck, self.seq)
 
-            # # shuffle deck and encrypt each number in deck with sym_key
+            # shuffle deck and encrypt each number in deck with sym_key
             # random.shuffle(self.deck)
             # encrypted_deck = Scrypt.encrypt_list(self.deck, self.sym_key, self.iv, "CBC")
+            # self.proto.deck(self.sock, encrypted_deck, self.seq)
 
 
     def handle_deck(self, conn, data: dict):
-        deck = data["deck"]
+        print("Received last deck")
+        self.deck = data["deck"]
 
         # TODO sign deck
-        print("last deck: ", deck)
-        self.proto.deck(self.sock, deck, self.seq)
+        self.proto.final_deck(self.sock, self.deck)
+        self.proto.key(self.sock, self.seq, b"")
+        print("Sent final deck and key")
+
+
+    def handle_keys(self, conn, data):
+        print("Received keys")
+        self.winners = self.get_winners()
+        print("Winners calculated")
+
+
+    def handle_winners(self, conn, data):
+        print("Received winners from ", data["seq"])
+        # TODO verificar se está correto
+        self.winners_recv += 1
+        if self.winners_recv == self.num_players:
+            print("Winners: ", self.winners)
+            self.proto.final_winners(self.sock, self.winners)
+            print("Sent final winners")
 
