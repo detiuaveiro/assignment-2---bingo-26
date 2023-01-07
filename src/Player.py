@@ -35,30 +35,41 @@ class Player(User):
 
     def handle_deck(self, conn, data):
         print("Deck received from ", data["seq"])
-        deck = data["deck"]
-        random.shuffle(deck)
-        self.proto.deck(self.sock, deck, self.seq)
-        print("Deck shuffled and sent")
+        encrypted_deck = Scrypt.encrypt_list(data["deck"], self.sym_key, self.iv, "CBC", False)
+        random.shuffle(encrypted_deck)
+        print("Deck encrypted and shuffled")
+        self.proto.deck(self.sock, encrypted_deck, self.seq)
+        
+        
+        # print("Deck received from ", data["seq"])
+        # deck = data["deck"]
+        # random.shuffle(deck)
+        # self.proto.deck(self.sock, deck, self.seq)
+        # print("Deck shuffled and sent")
 
         # print("\n\nWinner:")
         # print(list(self.get_winners())[0])
 
-        # print("Deck received from ", data["seq"])
-        # encrypted_deck = Scrypt.encrypt_list(data["deck"], self.sym_key, self.iv, "CBC", False)
-        # random.shuffle(encrypted_deck)
-        # print("Deck encrypted and shuffled")
-        # self.proto.deck(self.sock, encrypted_deck, self.seq)
 
 
     def handle_final_deck(self, conn, data):
         print("Final deck received from caller")
         self.deck = data["deck"]
-        self.proto.key(self.sock, self.seq, b"")
+        self.proto.key(self.sock, self.seq, (self.sym_key, self.iv))
         print("Key sent")
 
 
     def handle_keys(self, conn, data):
         print("Keys received")
+
+        # decrypt deck
+        keys = data["keys"]
+        for k, iv in keys[:-1]:
+            self.deck = Scrypt.decrypt_list(self.deck, k, iv, "CBC", False)
+        self.deck = Scrypt.decrypt_list(self.deck, keys[-1][0], keys[-1][1], "CBC", True)  # for the last key we must convert to int
+        print("Deck decrypted: ", self.deck)
+
+        # calculate winner
         winners = self.get_winners()
         print("Winners calculated")
         self.proto.winners(self.sock, self.seq, winners)

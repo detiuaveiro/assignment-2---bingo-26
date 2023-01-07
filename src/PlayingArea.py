@@ -144,12 +144,15 @@ class PlayingArea:
     @user_check
     def handle_key(self, conn: socket.socket, data: dict):
         self.all_keys[data["seq"]] = data["key"]
-        # TODO enviar as keys por ordem q foram usadas
+        
         if len(self.all_keys) == len(self.players) + 1:
+            keys_lst = [self.all_keys[i] for i in range(0, self.current_id+1) if i in self.all_keys]
+            keys_lst.reverse()
+
             for c in self.players:
-                self.proto.keys(c, self.all_keys)
+                self.proto.keys(c, keys_lst)
             for c in self.caller:
-                self.proto.keys(c, self.all_keys)
+                self.proto.keys(c, keys_lst)
 
 
     @player_check

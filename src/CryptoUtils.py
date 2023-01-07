@@ -41,8 +41,10 @@ class Scrypt:
         # content = unpadder.update(content) + unpadder.finalize()
         return content
 
-    def decrypt_list(_list, key, iv, mode):
-        return [int.from_bytes(Scrypt.decrypt(item, key, iv, mode), 'big') for item in _list]
+    def decrypt_list(_list, key, iv, mode, to_int=True):
+        if to_int:
+            return [int.from_bytes(Scrypt.decrypt(item, key, iv, mode), 'big') for item in _list]
+        return [Scrypt.decrypt(item, key, iv, mode) for item in _list]
 
 
 class Ascrypt:
