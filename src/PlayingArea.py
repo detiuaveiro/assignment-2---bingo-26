@@ -82,7 +82,7 @@ class PlayingArea:
     def handle_join(self, conn: socket.socket, data: dict):
         if data["client"] == "player":
             self.current_id += 1
-            self.proto.join_response(conn, not self.playing, self.current_id)
+            self.proto.join_response(conn, not self.playing, self.current_id, self.private_key)
             if not self.playing:
                 self.players[conn] = (self.current_id, data["nickname"], data["public_key"])
                 self.users_by_seq[self.current_id] = conn
@@ -91,7 +91,7 @@ class PlayingArea:
                 print("Join request denied")
                 self.close_conn(conn)
         elif data["client"] == "caller":
-            self.proto.join_response(conn, len(self.caller) == 0, 0)
+            self.proto.join_response(conn, len(self.caller) == 0, 0, self.private_key)
             if len(self.caller) == 0:
                 self.caller[conn] = (0, data["nickname"], data["public_key"])
                 self.users_by_seq[0] = conn
@@ -100,7 +100,7 @@ class PlayingArea:
                 print("Join request denied, caller already exists")
                 self.close_conn(conn)
         else:
-            self.proto.join_response(conn, False)
+            self.proto.join_response(conn, False, self.private_key)
             print("Join request denied, unknown client")
             self.close_conn(conn)
 
@@ -109,16 +109,16 @@ class PlayingArea:
     @caller_check
     def handle_start(self, conn: socket.socket, data: dict):
         for c in self.other_conns(conn):
-            self.proto.start(c)
+            self.proto.start(c, self.private_key)
         self.playing = True
-        self.proto.start_response(conn, len(self.players))
+        self.proto.start_response(conn, len(self.players), self.private_key)
 
 
 
     @player_check
     def handle_card(self, conn: socket.socket, data: dict):
         for c in self.other_conns(conn):
-            self.proto.card(c, data["card"], data["seq"])
+            self.proto.card(c, data["card"], data["seq"], self.private_key)
 
 
 
@@ -128,17 +128,17 @@ class PlayingArea:
         self.deck = data["deck"]
 
         if self.total_shuffles < len(self.players):
-            self.proto.deck(self.users_by_seq[self.total_shuffles + 1], self.deck, data["seq"])
+            self.proto.deck(self.users_by_seq[self.total_shuffles + 1], self.deck, data["seq"], self.private_key)
             self.total_shuffles += 1
     
         elif self.total_shuffles == len(self.players):
-                self.proto.deck(self.users_by_seq[0], self.deck, data["seq"]) #send deck to caller
+                self.proto.deck(self.users_by_seq[0], self.deck, data["seq"], self.private_key) #send deck to caller
 
     
     @caller_check
     def handle_final_deck(self, conn: socket.socket, data: dict):
         for c in self.other_conns(conn):
-            self.proto.final_deck(c, data["deck"])
+            self.proto.final_deck(c, data["deck"], self.private_key)
 
 
     @user_check
@@ -150,21 +150,21 @@ class PlayingArea:
             keys_lst.reverse()
 
             for c in self.players:
-                self.proto.keys(c, keys_lst)
+                self.proto.keys(c, keys_lst, self.private_key)
             for c in self.caller:
-                self.proto.keys(c, keys_lst)
+                self.proto.keys(c, keys_lst, self.private_key)
 
 
     @player_check
     def handle_winners(self, conn: socket.socket, data: dict):
         for c in self.caller:
-            self.proto.winners(c, data["seq"], data["winners"])
+            self.proto.winners(c, data["seq"], data["winners"], self.private_key)
 
 
     @caller_check
     def handle_final_winners(self, conn: socket.socket, data: dict):
         for c in self.other_conns(conn):
-            self.proto.final_winners(c, data["winners"])
+            self.proto.final_winners(c, data["winners"], self.private_key)
 
 
 

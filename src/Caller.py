@@ -8,7 +8,7 @@ class Caller(User):
         super().__init__(nickname, parea_host, parea_port, pin)
 
         # Join playing area as caller
-        self.proto.join(self.sock, self.cc, "caller", nickname, Ascrypt.serialize_key(self.pub_key))
+        self.proto.join(self.sock, self.cc, "caller", nickname, Ascrypt.serialize_key(self.pub_key), self.priv_key)
 
         self.deck = random.sample(range(0, 100), 100)
         self.handlers = {
@@ -23,7 +23,7 @@ class Caller(User):
 
         # wait 30 seconds for players to join
         time.sleep(20)
-        self.proto.start(self.sock)
+        self.proto.start(self.sock, self.priv_key)
         self.num_players = 0
         self.winners_recv = 0
         self.winners = []
@@ -45,7 +45,7 @@ class Caller(User):
             # encrypt each number in deck with sym_key
             print("Original deck: ", self.deck)
             encrypted_deck = Scrypt.encrypt_list(self.deck, self.sym_key, self.iv, "CBC", True)
-            self.proto.deck(self.sock, encrypted_deck, self.seq)
+            self.proto.deck(self.sock, encrypted_deck, self.seq, self.priv_key)
 
 
     def handle_deck(self, conn, data: dict):
@@ -53,8 +53,8 @@ class Caller(User):
         self.deck = data["deck"]
 
         # TODO sign deck
-        self.proto.final_deck(self.sock, self.deck)
-        self.proto.key(self.sock, self.seq, (self.sym_key, self.iv))
+        self.proto.final_deck(self.sock, self.deck, self.priv_key)
+        self.proto.key(self.sock, self.seq, (self.sym_key, self.iv), self.priv_key)
         print("Sent final deck and key")
 
 
@@ -79,6 +79,6 @@ class Caller(User):
         self.winners_recv += 1
         if self.winners_recv == self.num_players:
             print("Winners: ", self.winners)
-            self.proto.final_winners(self.sock, self.winners)
+            self.proto.final_winners(self.sock, self.winners, self.priv_key)
             print("Sent final winners")
 

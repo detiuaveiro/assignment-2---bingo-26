@@ -7,7 +7,7 @@ class Player(User):
         super().__init__(nickname, parea_host, parea_port, pin)
 
         # Join playing area as player
-        self.proto.join(self.sock, self.cc, "player", nickname, Ascrypt.serialize_key(self.pub_key))
+        self.proto.join(self.sock, self.cc, "player", nickname, Ascrypt.serialize_key(self.pub_key), self.priv_key)
 
         self.handlers = {
             "join_response": self.handle_join_response,
@@ -24,7 +24,7 @@ class Player(User):
 
     def handle_start(self, conn, data):
         print("Game started")
-        self.proto.card(self.sock, self.card, self.seq)
+        self.proto.card(self.sock, self.card, self.seq, self.priv_key)
         print("Card sent")
 
     
@@ -38,7 +38,7 @@ class Player(User):
         encrypted_deck = Scrypt.encrypt_list(data["deck"], self.sym_key, self.iv, "CBC", False)
         random.shuffle(encrypted_deck)
         print("Deck encrypted and shuffled")
-        self.proto.deck(self.sock, encrypted_deck, self.seq)
+        self.proto.deck(self.sock, encrypted_deck, self.seq, self.priv_key)
         
         
         # print("Deck received from ", data["seq"])
@@ -55,7 +55,7 @@ class Player(User):
     def handle_final_deck(self, conn, data):
         print("Final deck received from caller")
         self.deck = data["deck"]
-        self.proto.key(self.sock, self.seq, (self.sym_key, self.iv))
+        self.proto.key(self.sock, self.seq, (self.sym_key, self.iv), self.priv_key)
         print("Key sent")
 
 
@@ -72,7 +72,7 @@ class Player(User):
         # calculate winner
         winners = self.get_winners()
         print("Winners calculated")
-        self.proto.winners(self.sock, self.seq, winners)
+        self.proto.winners(self.sock, self.seq, winners, self.priv_key)
 
 
     def handle_final_winners(self, conn, data):

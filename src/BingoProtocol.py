@@ -1,19 +1,39 @@
 import pickle
 import socket
+from src.CryptoUtils import Ascrypt
 
-
-def msg_handler(func):
+def msg_sender(func):
     """
     Decorator to handle sending messages
     """
     def wrapper(*args, **kwargs):
+        res = func(*args, **kwargs)
+        private_key = args[-1]
+        signature = Ascrypt.sign(private_key, pickle.dumps(res))
         msg = {
             "type": func.__name__,
-            "data": func(*args, **kwargs)
+            "data": res,
+            "signature": signature
         }
         if args[1] is not None:
             args[0].send(args[1], pickle.dumps(msg))
         return msg
+    return wrapper
+
+# TODO: import this into the other files
+def msg_receiver(func):
+    """
+    Decorator to handle receiving messages
+    """
+    def wrapper(*args, **kwargs):
+        data = args[2]
+        signature = args[3]
+        public_key = args[4]
+        func(*args, **kwargs)
+        if Ascrypt.verify(public_key, pickle.dumps(data), signature):
+            return func(*args, **kwargs)
+        else:
+            raise Exception("Invalid signature")
     return wrapper
 
 
@@ -22,28 +42,28 @@ class BingoProtocol:
     def __init__(self):
         pass
 
-    @msg_handler
-    def disqualify(self, sock: socket.socket, seq: int, reason: str):
+    @msg_sender
+    def disqualify(self, sock: socket.socket, seq: int, reason: str, private_key):
         return {
             "seq": seq,
             "reason": reason
         }
 
 
-    @msg_handler
-    def get_logs(self, sock: socket.socket):
+    @msg_sender
+    def get_logs(self, sock: socket.socket, private_key):
         return {}
 
 
-    @msg_handler
-    def logs_response(self, sock: socket.socket, logs: list):
+    @msg_sender
+    def logs_response(self, sock: socket.socket, logs: list, private_key):
         return {
             "logs": logs
         }
 
 
-    @msg_handler
-    def join(self, sock: socket.socket, cc, client: str, nickname: str, public_key: bytes): 
+    @msg_sender
+    def join(self, sock: socket.socket, cc, client: str, nickname: str, public_key: bytes, private_key): 
         return {
             "client": client,
             "nickname": nickname,
@@ -51,73 +71,73 @@ class BingoProtocol:
         }
 
 
-    @msg_handler
-    def join_response(self, sock: socket.socket, accepted: bool, sequence_number: int): 
+    @msg_sender
+    def join_response(self, sock: socket.socket, accepted: bool, sequence_number: int, private_key): 
         return {
             "accepted": accepted, 
             "seq": sequence_number
         }
 
     
-    @msg_handler
-    def start(self, sock: socket.socket):
+    @msg_sender
+    def start(self, sock: socket.socket, private_key):
         return {}
 
     
-    @msg_handler
-    def start_response(self, sock: socket.socket, num_players: int):
+    @msg_sender
+    def start_response(self, sock: socket.socket, num_players: int, private_key):
         return {
             "num_players": num_players
         }
 
 
-    @msg_handler
-    def card(self, sock: socket.socket, card: list, seq: int):
+    @msg_sender
+    def card(self, sock: socket.socket, card: list, seq: int, private_key):
         return {
             "card": card,
             "seq": seq
         }
 
 
-    @msg_handler
-    def deck(self, sock: socket.socket, deck: list, seq: int):
+    @msg_sender
+    def deck(self, sock: socket.socket, deck: list, seq: int, private_key):
         return {
             "deck": deck,
             "seq": seq
         }
 
 
-    @msg_handler
-    def final_deck(self, sock: socket.socket, deck: list):
+    @msg_sender
+    def final_deck(self, sock: socket.socket, deck: list, private_key):
         return {
             "deck": deck,
         }
 
 
-    @msg_handler
-    def key(self, sock: socket.socket, seq: int, key: bytes):
+    @msg_sender
+    def key(self, sock: socket.socket, seq: int, key: bytes, private_key):
         return {
             "seq": seq,
             "key": key
         }
 
 
-    @msg_handler
-    def keys(self, sock: socket.socket, keys: dict):
+    @msg_sender
+    def keys(self, sock: socket.socket, keys: dict, private_key):
         return {
             "keys": keys
         }
 
 
-    @msg_handler
-    def winners(self, sock: socket.socket, seq:int, winners: list):
+    @msg_sender
+    def winners(self, sock: socket.socket, seq:int, winners: list, private_key):
         return {
             "seq": seq,
             "winners": winners
         }
 
-    @msg_handler
-    def final_winners(self, sock: socket.socket, winners: list):
+    @msg_sender
+    def final_winners(self, sock: socket.socket, winners: list, private_key):
         return {
             "winners": winners
         }

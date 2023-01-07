@@ -2,12 +2,17 @@
 
 function main()
 {
+    SHELL=$1
+    if [ $# -ne 1 ]; then
+        SHELL="bash"
+    fi
+    echo $SHELL
     gnome-terminal \
-    --tab -t "Playing Area" -e "bash -c 'python3 playing_area.py; exec bash'" --active \
-    --tab -t "Caller" -e "bash -c 'python3 caller.py -n caller; exec bash'" \
-    --tab -t "Player1" -e "bash -c 'python3 player.py -n p1; exec bash'" \
-    --tab -t "Player2" -e "bash -c 'python3 player.py -n p2; exec bash'" \
-    --tab -t "Player3" -e "bash -c 'python3 player.py -n p3; exec bash'"
+    --tab -t "Playing Area" -e "$SHELL -c 'python3 playing_area.py; exec $SHELL'" --active \
+    --tab -t "Caller" -e "$SHELL -c 'python3 caller.py -n caller; exec $SHELL'" \
+    --tab -t "Player1" -e "$SHELL -c 'python3 player.py -n p1; exec $SHELL'" \
+    --tab -t "Player2" -e "$SHELL -c 'python3 player.py -n p2; exec $SHELL'" \
+    --tab -t "Player3" -e "$SHELL -c 'python3 player.py -n p3; exec $SHELL'"
     exit 0
 }
 
