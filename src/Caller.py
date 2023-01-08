@@ -32,9 +32,6 @@ class Caller(User):
         print("Received ready response")
         self.players_info = {str(p[0]): (p[1], p[2]) for p in data["players"]}
         self.num_players = len(self.players_info) - 1
-
-        # TODO sign players_info
-
         self.proto.start(self.sock, self.players_info)
         self.sym_key = Scrypt.generate_symmetric_key()
         self.iv = Scrypt.generate_iv()
@@ -44,7 +41,7 @@ class Caller(User):
     def handle_card(self, conn, data, signature):
         print("Received card from player ", data["seq"])
 
-        # TODO verificar card
+        # TODO verificar card (cheating)
 
         self.cards.append((data["card"], data["seq"]))
         if len(self.cards) == self.num_players:
