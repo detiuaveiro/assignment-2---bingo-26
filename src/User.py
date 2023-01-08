@@ -10,9 +10,10 @@ class User:
         self.seq = None
         self.cards = []
         self.deck = []
+        self.players_info = []
 
         # proto
-        self.proto = BingoProtocol()
+        self.proto = BingoProtocol("PRIVATE_KEY")
         
         self.parea_host = parea_host
         self.parea_port = parea_port
@@ -38,13 +39,13 @@ class User:
     def read(self, conn, mask):
         data = self.proto.rcv(conn)
         if data:
-            # print("Received:", data)
-            try:
+            # try:
+                # print("Received:", data)
                 self.handlers[data["type"]](conn, data["data"])
-            except Exception as e:
-                print("Invalid message received")
-                print("Error:", e)
-                exit(1)
+            # except Exception as e:
+                # print("Invalid message received")
+                # print("Error:", e)
+                # exit(1)
         else:
             print("Connection closed by playing area:", conn.getpeername())
             self.sel.unregister(conn)
@@ -52,17 +53,23 @@ class User:
             exit(0)
 
 
+
     def handle_join_response(self, conn: socket.socket, data: dict):
         if data["accepted"]:
             print("Joined playing area")
-            self.seq = data["seq"] # sequence number
-            if self.seq != 0:
-                self.cards.append((self.card, self.seq))
+            self.seq = data["seq"]
+            self.proto.seq = self.seq
         else:
             print("Join request denied")
             self.sel.unregister(self.sock)
             self.sock.close()
             exit(0)
+
+
+
+    def handle_logs_response(self, conn, data):
+        pass
+    
 
 
     def get_winners(self):
@@ -81,7 +88,7 @@ class User:
                 winners.add(winner[0])
             else:
                 break
-        return winners
+        return list(winners)
 
 
     def run(self):

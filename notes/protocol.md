@@ -1,23 +1,26 @@
 
 msg = {
-    "type": "...", 
-    "data": {...}
+    "type": type,
+    "data": data,
 }
 
 type:
 
 - disqualify
     data = {
-        "seq": ...,
-        "reason": "..."
+        "seq": int,
+        "target_seq": int,
+        "reason": str,
     }
 
 - get_logs
-    data = {}
+    data = {
+        "seq": int,
+    }
 
 - logs_response
     data = {
-        "logs": "..."
+        "logs": [],
     }
 
 
@@ -34,35 +37,50 @@ type:
         "seq": int
     }
 
-- start
-    data = {}
-
-- start_response
+- ready
     data = {
-        "num_players": int,
+        "seq": int,
+    }
+
+- ready_response
+    data = {
+        "players": [],
+    }
+
+- start
+    data = {
+        "seq": int,
+        "players": [],
     }
 
 - card
     data = {
+        "seq": int,
         "card": [],
     }
 
 - deck
     data = {
+        "seq": int,
         "deck": [],
     }
+    
 
 - final_deck
     data = {
+        "seq": int,
         "deck": [],
     }
 
-- get_keys
-    data = {}
+- key
+    data = {
+        "seq": int,
+        "key": list(str, str)
+    }
 
 - keys_response
     data = {
-        "keys": [],
+        "keys": {},
     }
 
 - winners
@@ -73,5 +91,6 @@ type:
 
 - final_winners
     data = {
+        "seq": int,
         "winners": [],
     }

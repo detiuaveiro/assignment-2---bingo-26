@@ -12,7 +12,8 @@ nickname = parsed_args.nickname
 if nickname == 'player':
     nickname += parsed_args.port
 
-pin = getpass("Enter PIN: ")
+# pin = getpass("Enter PIN: ")
+pin= '0'
 
 player = Player(parsed_args.nickname, parsed_args.addr, parsed_args.port, pin)
 print("Player trying to connect to playing area on port", parsed_args.port)

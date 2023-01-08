@@ -51,7 +51,7 @@ class PlayingArea:
         self.sock.setblocking(False)
         self.sel.register(self.sock, selectors.EVENT_READ, self.accept)
 
-        self.proto = BingoProtocol()
+        self.proto = BingoProtocol("PRIVATE_KEY")
         self.users_by_seq = {}        # {seq: conn}
         self.players = {}               # {conn: (seq, nickname, public_key)}
         self.caller = {}                # {conn: (seq, nickname, public_key)}
@@ -60,14 +60,16 @@ class PlayingArea:
         self.all_keys = {}
         self.playing = False            # blocks new players from joining
         self.checking_winner = False    # blocks new cards from being played
-        self.deck = []
         self.all_msgs = []
 
         # asymmetric encryption
         self.private_key, self.public_key = Ascrypt.generate_key_pair()
 
         self.handlers = { 
+            "disqualify": self.handle_disqualify,
+            "get_logs": self.handle_get_logs,
             "join": self.handle_join,
+            "ready": self.handle_ready,
             "start": self.handle_start,
             "card": self.handle_card,
             "deck": self.handle_deck,
@@ -79,10 +81,20 @@ class PlayingArea:
 
 
 
+    def handle_disqualify(self, conn: socket.socket, data: dict):
+        pass
+
+
+
+    def handle_get_logs(self, conn: socket.socket, data: dict):
+        pass
+
+
+
     def handle_join(self, conn: socket.socket, data: dict):
         if data["client"] == "player":
             self.current_id += 1
-            self.proto.join_response(conn, not self.playing, self.current_id, self.private_key)
+            self.proto.join_response(conn, not self.playing, self.current_id)
             if not self.playing:
                 self.players[conn] = (self.current_id, data["nickname"], data["public_key"])
                 self.users_by_seq[self.current_id] = conn
@@ -91,7 +103,7 @@ class PlayingArea:
                 print("Join request denied")
                 self.close_conn(conn)
         elif data["client"] == "caller":
-            self.proto.join_response(conn, len(self.caller) == 0, 0, self.private_key)
+            self.proto.join_response(conn, len(self.caller) == 0, 0)
             if len(self.caller) == 0:
                 self.caller[conn] = (0, data["nickname"], data["public_key"])
                 self.users_by_seq[0] = conn
@@ -100,71 +112,90 @@ class PlayingArea:
                 print("Join request denied, caller already exists")
                 self.close_conn(conn)
         else:
-            self.proto.join_response(conn, False, self.private_key)
+            self.proto.join_response(conn, False)
             print("Join request denied, unknown client")
             self.close_conn(conn)
 
 
 
-    @caller_check
-    def handle_start(self, conn: socket.socket, data: dict):
-        for c in self.other_conns(conn):
-            self.proto.start(c, self.private_key)
+    def handle_ready(self, conn: socket.socket, data: dict):
+        print("Ready received")
         self.playing = True
-        self.proto.start_response(conn, len(self.players), self.private_key)
+        self.proto.ready_response(conn, [tup for tup in self.players.values()])
+        print("Ready response sent")
 
 
 
-    @player_check
+    def handle_start(self, conn: socket.socket, data: dict):
+        print("Start received")
+        self.proto.seq = data["seq"]
+        for c in self.other_conns(conn):
+            self.proto.start(c, data["players"])
+        print("Start sent to other players")
+
+
+
     def handle_card(self, conn: socket.socket, data: dict):
+        print("Card received from", data["seq"])
+        self.proto.seq = data["seq"]
         for c in self.other_conns(conn):
-            self.proto.card(c, data["card"], data["seq"], self.private_key)
+            self.proto.card(c, data["card"])
+        print("Card sent to other players")
 
 
 
-    @user_check
     def handle_deck(self, conn: socket.socket, data: dict):
-        #commit deck
-        self.deck = data["deck"]
-
+        print("Deck received from", data["seq"])
+        deck = data["deck"]
+        if self.total_shuffles != 0:
+            self.proto.deck(self.users_by_seq[0], deck)
+        print("Deck sent to caller")
         if self.total_shuffles < len(self.players):
-            self.proto.deck(self.users_by_seq[self.total_shuffles + 1], self.deck, data["seq"], self.private_key)
+            self.proto.seq = data["seq"]
+            self.proto.deck(self.users_by_seq[self.total_shuffles + 1], deck)
             self.total_shuffles += 1
-    
-        elif self.total_shuffles == len(self.players):
-                self.proto.deck(self.users_by_seq[0], self.deck, data["seq"], self.private_key) #send deck to caller
+            print("Deck sent to next player")
 
     
-    @caller_check
+
     def handle_final_deck(self, conn: socket.socket, data: dict):
+        print("Final deck received from", data["seq"])
+        self.proto.seq = data["seq"]
         for c in self.other_conns(conn):
-            self.proto.final_deck(c, data["deck"], self.private_key)
+            self.proto.final_deck(c, data["deck"])
+        print("Final deck sent to other players")
 
 
-    @user_check
+
     def handle_key(self, conn: socket.socket, data: dict):
+        print("Key received from", data["seq"])
         self.all_keys[data["seq"]] = data["key"]
-        
         if len(self.all_keys) == len(self.players) + 1:
-            keys_lst = [self.all_keys[i] for i in range(0, self.current_id+1) if i in self.all_keys]
+            keys_lst = [self.all_keys[i] for i in range(self.current_id+1) if i in self.all_keys]
             keys_lst.reverse()
-
             for c in self.players:
-                self.proto.keys(c, keys_lst, self.private_key)
+                self.proto.keys_response(c, keys_lst)
             for c in self.caller:
-                self.proto.keys(c, keys_lst, self.private_key)
+                self.proto.keys_response(c, keys_lst)
+            print("Keys sent to all players")
 
 
-    @player_check
+    
     def handle_winners(self, conn: socket.socket, data: dict):
+        print("Winners received from", data["seq"])
+        self.proto.seq = data["seq"]
         for c in self.caller:
-            self.proto.winners(c, data["seq"], data["winners"], self.private_key)
+            self.proto.winners(c, data["winners"])
+        print("Winners sent to caller")
 
 
-    @caller_check
+    
     def handle_final_winners(self, conn: socket.socket, data: dict):
+        print("Final winners received from", data["seq"])
+        self.proto.seq = data["seq"]
         for c in self.other_conns(conn):
-            self.proto.final_winners(c, data["winners"], self.private_key)
+            self.proto.final_winners(c, data["winners"])
+        print("Final winners sent to other players")
 
 
 
@@ -179,8 +210,8 @@ class PlayingArea:
     def read(self, conn, mask):
         data = self.proto.rcv(conn)
         if data:
-            print("Received:", data)
             try:
+                # print("Received message: ", data)
                 self.handlers[data["type"]](conn, data["data"])
             except Exception as e:
                 print("Invalid message received")

@@ -1,20 +1,27 @@
 
-1. registar com nickname e pub_key (user -> parea)
-2. resultado do registo (parea -> user)
+- user envia nickname e pub_key pra parea
+- parea envia o resultado
 
-1. caller envia "start" para parea
-2. parea envia todas as pub_keys para todos
-3. parea envia "start" para os players
-4. players enviam o "card" para a parea
-5. parea envia o "card" para todos
-6. quando o caller tiver todos os cards, envia o "deck" para a parea
-7. parea envia o "deck" para um player de cada vez para o shuffle
-8. quando tiver passado por todos, parea envia o "deck" para o caller
-9. caller envia o "final deck" para a parea
-10. parea envia o "final deck" para todos
-11. todos enviam as simetric keys para a parea
-12. parea envia as simetric keys para todos
-13. os players enviam os "winners" para a parea
-14. parea envia os "winners" para o caller
-15. depois de receber os "winners", o caller envia o "final winners" para a parea
-16. parea envia o "final winners" para todos
+- caller envia "ready" para a parea
+- parea bloqueia novos players e manda (seq, nick, pub_key) para o call assinar
+- caller envia "start" para parea com (seq, nick, pub_key) assinadas
+- parea envia "start" para os players
+
+- players geram as simetric keys
+- players enviam o "card" para a parea
+- parea envia o "card" para todos
+
+- quando o caller tiver todos os cards, envia o "deck" para a parea
+- parea envia o "deck" para um player de cada vez para o shuffle e para o caller
+- quando tiver passado por todos, parea envia o "deck" para o caller
+
+- caller envia o "final deck" para a parea
+- parea envia o "final deck" para todos
+
+- todos enviam as simetric keys para a parea
+- parea envia as simetric keys para todos
+
+- os players enviam os "winners" para a parea
+- parea envia os "winners" para o caller
+- depois de receber os "winners", o caller envia o "final winners" para a parea
+- parea envia o "final winners" para todos

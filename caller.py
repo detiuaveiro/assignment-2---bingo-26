@@ -8,7 +8,8 @@ args.add_argument('--addr', type=str, help='Player Area IP address', metavar='AD
 args.add_argument('-p', '--port', type=int, default=5000, help='Player Area port', metavar='PLAYER_AREA_PORT')
 parsed_args = args.parse_args()
 
-pin = getpass("Enter PIN: ")
+# pin = getpass("Enter PIN: ")
+pin= '0'
 
 caller = Caller(parsed_args.nickname, parsed_args.addr, parsed_args.port, pin)
 print("Caller trying to connect to playing area on port", parsed_args.port)

@@ -90,5 +90,5 @@ class Ascrypt:
         return public_key.public_bytes(
             encoding=serialization.Encoding.PEM,
             format=serialization.PublicFormat.SubjectPublicKeyInfo
-        )
+        ).decode('utf-8')
         
