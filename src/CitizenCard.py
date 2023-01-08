@@ -3,7 +3,7 @@ import binascii
 from cryptography import x509
 from cryptography.hazmat.backends import default_backend as db
 from cryptography.hazmat.primitives.asymmetric.padding import PKCS1v15
-from cryptography.hazmat.primitives.hashes import SHA1
+from cryptography.hazmat.primitives.hashes import SHA1, Hash
 
 class CitizenCard:
     def __init__(self, pin, lib='/usr/lib/x86_64-linux-gnu/pkcs11/opensc-pkcs11.so'):
@@ -36,8 +36,12 @@ class CitizenCard:
 
 
     # static method (not associated with any instance)
-    def verify(public_key, obj, signature):
+    def verify(public_key, obj, signature, virtual=False):
         try:
+            if virtual:
+                md = Hash(SHA1(), backend=db())
+                md.update(obj)
+                obj = md.finalize()
             public_key.verify(
                 signature,
                 obj,

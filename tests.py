@@ -1,10 +1,18 @@
 from src.BingoProtocol import BingoProtocol
 from src.CryptoUtils import Scrypt, Ascrypt
+from src.CitizenCard import CitizenCard
 
-import logging
-logging.basicConfig(filename='example.log', encoding='utf-8', level=logging.DEBUG, format='%(levelname)s: %(message)s')
-logging.info('So should this')
-logging.warning('And this, too')
+cc = CitizenCard("1111")
+msg = b'ola mundo'
+signature = cc.sign(msg)
+print(CitizenCard.verify(cc.export_cert_public_key(), msg, signature, True))
+
+# ------------------------------------------------------------------
+
+# import logging
+# logging.basicConfig(filename='example.log', encoding='utf-8', level=logging.DEBUG, format='%(levelname)s: %(message)s')
+# logging.info('So should this')
+# logging.warning('And this, too')
 
 # ------------------------------------------------------------------
 # sym_key = Scrypt.generate_symmetric_key()
