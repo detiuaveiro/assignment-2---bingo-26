@@ -99,7 +99,7 @@ type:
 - keys_response
     data = {
         "type": "keys_response",
-        "keys": {},
+        "keys": [[str, str], ...]]
     }
 
 - winners

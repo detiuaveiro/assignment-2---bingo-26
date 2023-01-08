@@ -1,5 +1,5 @@
 from src.User import User
-from src.CryptoUtils import Ascrypt, Scrypt
+from src.CryptoUtils import Ascrypt, Scrypt, BytesSerializer
 import random
 import time
 
@@ -65,7 +65,7 @@ class Caller(User):
             final_deck = data["deck"] 
             # TODO signed deck
             self.proto.final_deck(self.sock, final_deck)
-            self.proto.key(self.sock, ["key", "iv"])
+            self.proto.key(self.sock, [BytesSerializer.to_base64_str(self.sym_key), BytesSerializer.to_base64_str(self.iv)])
             print("Sent final deck and key")
 
 
@@ -88,14 +88,8 @@ class Caller(User):
             print("Winners: ", self.winners)
             self.proto.final_winners(self.sock, self.winners)
             print("Sent final winners")
+            exit(0)
 
-            self.num_players = 0
-            self.winners_recv = 0
-            self.decks_recv = 0
-            self.winners = []
-            self.cards = []
-            self.deck = []
-            self.players_info = []
-            time.sleep(5)
-            print("\n\n")
-            self.proto.ready(self.sock)
+
+    def handle_input(self, command):
+        pass

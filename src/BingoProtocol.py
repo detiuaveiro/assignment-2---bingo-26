@@ -1,6 +1,6 @@
 import json
 import socket
-# from src.CryptoUtils import Ascrypt
+from src.CryptoUtils import Ascrypt, BytesSerializer
 
 def msg_sender(func):
     """
@@ -9,10 +9,10 @@ def msg_sender(func):
     def wrapper(*args, **kwargs):
         res = func(*args, **kwargs)
         res["type"] = func.__name__
-        # TODO implement signature
+        signature = Ascrypt.sign(args[0].private_key, json.dumps(res).encode("utf-8"))
         msg = {
             "data": res,
-            "signature": "SIGNATURE"
+            "signature": BytesSerializer.to_base64_str(signature)
         }
         if args[1] is not None:
             args[0].send(args[1], json.dumps(msg).encode('utf-8'))
@@ -133,7 +133,7 @@ class BingoProtocol:
 
 
     @msg_sender
-    def keys_response(self, sock: socket.socket, keys: dict):
+    def keys_response(self, sock: socket.socket, keys: list):
         return {
             "keys": keys
         }

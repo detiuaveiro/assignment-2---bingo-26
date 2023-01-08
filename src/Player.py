@@ -1,5 +1,5 @@
 from src.User import User
-from src.CryptoUtils import Scrypt, Ascrypt
+from src.CryptoUtils import Scrypt, Ascrypt, BytesSerializer
 import random
 
 class Player(User):
@@ -26,18 +26,22 @@ class Player(User):
 
 
     def handle_disqualify(self, conn, data, signature):
-        pass
+        if data["target_seq"] == self.seq:
+            print("Disqualified for : ", data["reason"])
+            exit(0)
+        else:
+            print(f"Player {data['target_seq']} disqualified for : ", data["reason"])
 
 
 
     def handle_start(self, conn, data, signature):
-
-        # TODO gerar chaves simetricas
-
+        self.sym_key = Scrypt.generate_symmetric_key()
+        self.iv = Scrypt.generate_iv()
         print("\n\nGame started")
         self.card = random.sample(range(0, 100), 25)
         self.cards.append((self.card, self.seq))
         print("Card generated")
+        print("My card: ", self.card)
         self.proto.card(self.sock, self.card)
         print("Card sent")
 
@@ -51,20 +55,17 @@ class Player(User):
 
     def handle_deck(self, conn, data, signature):
         print("Deck received from ", data["seq"])
-        deck = data["deck"]
-        random.shuffle(deck)
-
-        # TODO encrypt deck
-        
-        self.proto.deck(self.sock, deck)
+        encrypted_deck = Scrypt.encrypt_list(data["deck"], self.sym_key, self.iv, "CBC")
+        random.shuffle(encrypted_deck)
+        print("Deck encrypted and shuffled")
+        self.proto.deck(self.sock, encrypted_deck)
  
 
 
     def handle_final_deck(self, conn, data, signature):
         print("Final deck received from caller")
         self.deck = data["deck"]
-        # TODO send key and iv
-        self.proto.key(self.sock, ["key", "iv"])
+        self.proto.key(self.sock, [BytesSerializer.to_base64_str(self.sym_key), BytesSerializer.to_base64_str(self.iv)])
         print("Key sent")
 
 
@@ -72,8 +73,16 @@ class Player(User):
     def handle_keys_response(self, conn, data, signature):
         print("Keys received")
 
-        # TODO decrypt deck
-
+        # decrypt deck
+        keys = data["keys"]
+        for k, iv in keys[:-1]:
+            k = BytesSerializer.from_base64_str(k)
+            iv = BytesSerializer.from_base64_str(iv)
+            self.deck = Scrypt.decrypt_list(self.deck, k, iv, "CBC", False)
+        last_key = BytesSerializer.from_base64_str(keys[-1][0])
+        last_iv = BytesSerializer.from_base64_str(keys[-1][1])
+        self.deck = Scrypt.decrypt_list(self.deck, last_key, last_iv, "CBC")  # for the last key we must convert to int
+        print("Deck decrypted: ", self.deck)
         winners = self.get_winners()
         self.proto.winners(self.sock, winners)
         print("Winners calculated and sent")
@@ -83,6 +92,9 @@ class Player(User):
     def handle_final_winners(self, conn, data, signature):
         print("Final winners received from caller")
         print("Winners: ", data["winners"])
-        self.cards = []
-        self.deck = []
-        self.players_info = []
+        exit(0)
+
+    
+    def handle_input(self, command):
+        # TODO
+        pass

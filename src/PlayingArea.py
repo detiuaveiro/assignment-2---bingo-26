@@ -1,10 +1,11 @@
 import socket
 import selectors
+import logging
+import json
 from src.BingoProtocol import BingoProtocol
-from src.CryptoUtils import Ascrypt
+from src.CryptoUtils import Ascrypt, BytesSerializer
 
-
-
+logging.basicConfig(filename='playing_area.log', encoding='utf-8', level=logging.DEBUG, format='%(levelname)s: %(message)s')
 
 class PlayingArea:
     
@@ -26,7 +27,7 @@ class PlayingArea:
         self.current_id = 0
         self.total_shuffles = 0
         self.all_keys = {}
-        self.playing = False            # blocks new players from joining
+        self.playing = False          # blocks new players from joining
         self.all_msgs = []
 
         # asymmetric encryption
@@ -49,12 +50,16 @@ class PlayingArea:
 
 
     def handle_disqualify(self, conn, data, signature):
-        pass
+        print(f"Player {data['target_seq']} disqualified for : ", data["reason"])
+        for c in self.other_conns(conn):
+            self.proto.redirect(c, data, signature)
+        print("Disqualification message sent to other players")
+        self.close_conn(self.users_by_seq[data["target_seq"]])
 
 
 
     def handle_get_logs(self, conn, data, signature):
-        pass
+        self.proto.logs_response(conn, self.all_msgs)
 
 
 
@@ -154,12 +159,8 @@ class PlayingArea:
         for c in self.other_conns(conn):
             self.proto.redirect(c, data, signature)
         print("Final winners sent to other players")
-        self.playing = False
-        self.current_id = 0
-        self.total_shuffles = 0
-        self.all_keys = {}
-        self.all_msgs = []
-
+        exit(0)
+        
 
 
     def accept(self, sock, mask):
@@ -173,19 +174,75 @@ class PlayingArea:
     def read(self, conn, mask):
         data = self.proto.rcv(conn)
         if data:
-            # try:
-                # TODO verificar seq com conn
-                # TODO verificar assinatura
-                # print("Received message: ", data)
+            try:
+                self.verify_seq(conn, data)
+                self.verify_type(conn, data)
+                self.verify_signature(conn, data)   
+
                 self.handlers[data["data"]["type"]](conn, data["data"], data["signature"])
-            # except Exception as e:
-            #     print("Invalid message received")
-            #     print("Error:", e)
-            #     exit(1)
+            except Exception as e:
+                print("Invalid message received")
+                print("Error:", e)
+                exit(1)
         else:
             self.close_conn(conn)
 
+
     
+    def verify_seq(self, conn, data) -> bool:
+        seq = data["data"]["seq"]
+        if self.users[conn][0] != seq:
+            raise Exception("Wrong sequence number")
+
+
+        
+    def verify_type(self, conn, data) -> bool:
+        type_ = data["data"]["type"]
+        if type_ not in self.handlers:
+            raise Exception("Unknown message type")
+        if type_ == "join":
+            return
+        available_types = {
+            "caller": [
+                "disqualify", "ready", "start", "final_deck", "final_winners"
+            ],
+            "player": [
+                "card", "winners"
+            ],
+            "user": [
+                "get_logs", "deck", "key"
+            ]
+        }
+        user_type, = [u for u in available_types if type_ in available_types[u]]
+        if user_type == "caller":
+            if conn != self.caller:
+                raise Exception("Only caller can send this message")
+        elif user_type == "player":
+            if conn not in self.other_conns(self.caller):
+                raise Exception("Only players can send this message")
+        elif user_type == "user":
+            if conn not in self.users:
+                raise Exception("Only users can send this message")
+
+
+
+    def verify_signature(self, conn, data) -> bool:
+        content = json.dumps(data["data"]).encode("utf-8")
+        signature = BytesSerializer.from_base64_str(data["signature"])
+        if not Ascrypt.verify(Ascrypt.deserialize_key(self.caller[conn][2]), content, signature):
+            print("\033[91mInvalid signature")
+            raise Exception("Invalid signature")
+        elif data["type"] == "join":
+            if not Ascrypt.verify(Ascrypt.deserialize_key(data["data"]["public_key"]), content, signature):
+                print("\033[91mInvalid signature")
+                raise Exception("Invalid signature")
+            # TODO
+            # if not Ascrypt.verify_signature(content, signature, PUBLIC_KEY_CC):
+            #     print("\033[91mInvalid Citizen Card signature")
+            #     raise Exception("Invalid Citizen Card signature")
+            #     return
+
+
 
     def close_conn(self, conn: socket.socket):
         if conn in self.users:

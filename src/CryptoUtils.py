@@ -1,10 +1,19 @@
 import os
+import base64
 
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives.padding import PKCS7
 
 from cryptography.hazmat.primitives import serialization, hashes
 from cryptography.hazmat.primitives.asymmetric import rsa, padding
+
+class BytesSerializer:
+    def to_base64_str(obj: bytes) -> str:
+        return base64.b64encode(obj).decode("utf-8")
+
+    def from_base64_str(string: str) -> bytes:
+        return base64.b64decode(string.encode("utf-8"))
+
 
 class Scrypt:
     def algorithm_mode(mode, iv):
@@ -28,10 +37,15 @@ class Scrypt:
         ct = encryptor.update(content) + encryptor.finalize()
         return ct
 
-    def encrypt_list(_list, key, iv, mode, to_bytes=True):
-        if to_bytes:
-            return [Scrypt.encrypt(item.to_bytes(16, 'big'), key, iv, mode) for item in _list]
-        return [Scrypt.encrypt(item, key, iv, mode) for item in _list]
+    def encrypt_list(_list, key, iv, mode, serializable=True):
+        res = []
+        for item in _list:
+            if type(item) == str: item = base64.b64decode(item.encode("utf-8"))
+            elif type(item) == int: item = item.to_bytes(16, 'big')
+            if serializable: res.append(BytesSerializer.to_base64_str(Scrypt.encrypt(item, key, iv, mode)))
+            else: res.append(Scrypt.encrypt(item, key, iv, mode))
+        return res
+
 
     def decrypt(ct, key, iv, mode):
         cipher = Cipher(algorithms.AES(key), Scrypt.algorithm_mode(mode, iv))
@@ -41,10 +55,13 @@ class Scrypt:
         # content = unpadder.update(content) + unpadder.finalize()
         return content
 
-    def decrypt_list(_list, key, iv, mode, to_int=True):
-        if to_int:
-            return [int.from_bytes(Scrypt.decrypt(item, key, iv, mode), 'big') for item in _list]
-        return [Scrypt.decrypt(item, key, iv, mode) for item in _list]
+    def decrypt_list(_list, key, iv, mode, to_int = True):
+        res = []
+        for item in _list:
+            if type(item) == str: item = BytesSerializer.from_base64_str(item)
+            if to_int: res.append(int.from_bytes(Scrypt.decrypt(item, key, iv, mode), 'big'))
+            else: res.append(Scrypt.decrypt(item, key, iv, mode))
+        return res
 
 
 class Ascrypt:
@@ -55,16 +72,19 @@ class Ascrypt:
         )
         return private_key, private_key.public_key()
 
-    def bytes_from(public_key):
+    def serialize_key(public_key):
         return public_key.public_bytes(
             encoding=serialization.Encoding.PEM,
             format=serialization.PublicFormat.SubjectPublicKeyInfo
-        )
+        ).decode("utf-8")
+
+    def deserialize_key(key: str):
+        return serialization.load_pem_public_key(key.encode("utf-8"))
     
     def sign(private_key, content):
         return private_key.sign(
             content,
-            padding.PSS(    
+            padding.PSS(
                 mgf=padding.MGF1(hashes.SHA256()),
                 salt_length=padding.PSS.MAX_LENGTH
             ),
@@ -85,10 +105,3 @@ class Ascrypt:
         except:
             return False
         return True
-
-    def serialize_key(public_key):
-        return public_key.public_bytes(
-            encoding=serialization.Encoding.PEM,
-            format=serialization.PublicFormat.SubjectPublicKeyInfo
-        ).decode('utf-8')
-        
