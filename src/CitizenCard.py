@@ -36,12 +36,22 @@ class CitizenCard:
 
 
     # static method (not associated with any instance)
-    def verify(public_key, obj, signature, virtual=False):
+    def verify(public_key, obj, signature):
         try:
-            if virtual:
-                md = Hash(SHA1(), backend=db())
-                md.update(obj)
-                obj = md.finalize()
+            md = Hash(SHA1(), backend=db())
+            md.update(obj)
+            digest = md.finalize()
+            public_key.verify(
+                signature,
+                digest,
+                PKCS1v15(),
+                SHA1()
+            )
+            return True
+        except:
+            pass
+
+        try:
             public_key.verify(
                 signature,
                 obj,

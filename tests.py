@@ -5,7 +5,7 @@ from src.CitizenCard import CitizenCard
 cc = CitizenCard("1111")
 msg = b'ola mundo'
 signature = cc.sign(msg)
-print(CitizenCard.verify(cc.export_cert_public_key(), msg, signature, True))
+print(CitizenCard.verify(cc.export_cert_public_key(), msg, signature))
 
 # ------------------------------------------------------------------
 
