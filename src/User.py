@@ -1,7 +1,7 @@
 import socket
 import selectors
 from src.BingoProtocol import BingoProtocol
-# from src.CitizenCard import CitizenCard
+from src.CitizenCard import CitizenCard
 from src.CryptoUtils import Ascrypt, Scrypt, BytesSerializer
 import json
 
@@ -46,7 +46,7 @@ class User:
         self.proto = BingoProtocol(self.priv_key)
         
         # cc
-        self.cc = None # replace by CitizenCard(pin)
+        self.cc = None #CARDCitizenCard(pin)
 
         ## non-blocking input
         orig_fl = fcntl.fcntl(sys.stdin, fcntl.F_GETFL)

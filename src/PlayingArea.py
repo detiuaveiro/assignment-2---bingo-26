@@ -4,6 +4,7 @@ import logging
 import json
 from src.BingoProtocol import BingoProtocol
 from src.CryptoUtils import Ascrypt, BytesSerializer
+from src.CitizenCard import CitizenCard
 
 logging.basicConfig(filename='playing_area.log', encoding='utf-8', level=logging.DEBUG, format='%(levelname)s: %(message)s')
 
@@ -234,17 +235,16 @@ class PlayingArea:
         content = json.dumps(data["data"]).encode("utf-8")
         signature = BytesSerializer.from_base64_str(data["signature"])
         if conn in self.users and not Ascrypt.verify(Ascrypt.deserialize_key(self.users[conn][2]), content, signature):
-            print("\033[91mInvalid signature")
+            print("\033[91mInvalid signature\033[0m")
             raise BingoException("Invalid signature")
         elif data["data"]["type"] == "join":
             if not Ascrypt.verify(Ascrypt.deserialize_key(data["data"]["public_key"]), content, signature):
-                print("\033[91mInvalid signature")
+                print("\033[91mInvalid signature\033[0m")
                 raise BingoException("Invalid signature")
-            # TODO
-            # if not Ascrypt.verify_signature(content, signature, PUBLIC_KEY_CC):
-            #     print("\033[91mInvalid Citizen Card signature")
-            #     raise BingoException("Invalid Citizen Card signature")
-            #     return
+            #CARDcc_signature = BytesSerializer.from_base64_str(data["cc_signature"])
+            #CARDif not CitizenCard.verify(Ascrypt.deserialize_key(data["data"]["cc_public_key"]), content, cc_signature):
+            #CARD   print("\033[91mInvalid Citizen Card signature\033[0m")
+            #CARD   raise BingoException("Invalid Citizen Card signature")
 
 
 

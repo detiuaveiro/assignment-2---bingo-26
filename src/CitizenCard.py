@@ -29,21 +29,21 @@ class CitizenCard:
         return cert.public_key()
     
 
-    def sign(self, text):
-        signature = bytes(self.session.sign(self.private_key, text, PyKCS11.Mechanism(PyKCS11.CKM_SHA1_RSA_PKCS, None)))
-        print("signature: ", binascii.hexlify(signature))
+    def sign(self, obj):
+        signature = bytes(self.session.sign(self.private_key, obj, PyKCS11.Mechanism(PyKCS11.CKM_SHA1_RSA_PKCS, None)))
+        #print("signature: ", binascii.hexlify(signature))
         return signature
 
 
     # static method (not associated with any instance)
-    def verify(signature, text, public_key):
+    def verify(public_key, obj, signature):
         try:
             public_key.verify(
                 signature,
-                text,
+                obj,
                 PKCS1v15(),
                 SHA1()
             )
+            return True
         except:
             return False
-        return True

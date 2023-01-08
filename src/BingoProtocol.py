@@ -1,6 +1,7 @@
 import json
 import socket
 from src.CryptoUtils import Ascrypt, BytesSerializer
+from src.CitizenCard import CitizenCard
 
 def msg_sender(func):
     """
@@ -14,6 +15,9 @@ def msg_sender(func):
             "data": res,
             "signature": BytesSerializer.to_base64_str(signature)
         }
+        #CARDif res["type"] == "join":
+        #CARD   cc_signature = args[2].sign(json.dumps(res).encode("utf-8"))
+        #CARD   msg["cc_signature"] = BytesSerializer.to_base64_str(cc_signature)
         if args[1] is not None:
             args[0].send(args[1], json.dumps(msg).encode('utf-8'))
         return msg
@@ -61,11 +65,12 @@ class BingoProtocol:
 
 
     @msg_sender
-    def join(self, sock: socket.socket, cc, client: str, nickname: str, public_key: str): 
+    def join(self, sock: socket.socket, cc: CitizenCard, client: str, nickname: str, public_key: str):
         return {
             "client": client,
             "nickname": nickname,
-            "public_key": public_key
+            "public_key": public_key,
+            "cc_public_key": "CC_PUBLIC_KEY" #CARDAscrypt.serialize_key(cc.export_cert_public_key())
         }
 
 
