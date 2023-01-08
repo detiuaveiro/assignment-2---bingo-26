@@ -9,6 +9,13 @@ import sys      # for non-blocking input
 import fcntl    # for non-blocking input
 import os       # for non-blocking input
 
+M = 100
+N = M//4
+
+class BingoException(Exception):
+    pass
+
+
 class User:
     def __init__(self, nickname, parea_host, parea_port, pin):
         self.nickname = nickname
@@ -16,11 +23,8 @@ class User:
         self.seq = None
         self.cards = []
         self.deck = []
-        self.players_info = []
+        self.players_info = {}
 
-        # proto
-        self.proto = BingoProtocol("PRIVATE_KEY")
-        
         self.parea_host = parea_host
         self.parea_port = parea_port
         #socket and selector
@@ -37,6 +41,9 @@ class User:
 
         # asymmetric encryption
         self.priv_key, self.pub_key = Ascrypt.generate_key_pair()
+
+        # proto
+        self.proto = BingoProtocol(self.priv_key)
         
         # cc
         self.cc = None # replace by CitizenCard(pin)
@@ -50,16 +57,16 @@ class User:
     def read(self, conn, mask):
         data = self.proto.rcv(conn)
         if data:
-            try:
-                if data["type"] == "join_response":
-                    self.parea_pub_key = Ascrypt.deserialize_key(data["data"]["public_key"])
-                # TODO self.verify_signature(data)
+            # try:
+                if data["data"]["type"] == "join_response":
+                    self.parea_pub_key = Ascrypt.deserialize_key(data["data"]["parea_public_key"])
+                self.verify_parea_signature(data)
 
                 self.handlers[data["data"]["type"]](conn, data["data"], data["signature"])
-            except Exception as e:
-                print("Invalid message received")
-                print("Error:", e)
-                exit(1)
+            # except Exception as e:
+            #     print("Invalid message received")
+            #     print("Error:", e)
+            #     exit(1)
         else:
             print("Connection closed by playing area:", conn.getpeername())
             self.sel.unregister(conn)
@@ -68,18 +75,31 @@ class User:
 
 
 
-    def verify_signature(self, data):
+    def verify_parea_signature(self, data):
         content = json.dumps(data["data"]).encode("utf-8")
         signature = BytesSerializer.from_base64_str(data["signature"])
         if not Ascrypt.verify(self.parea_pub_key, content, signature):
             print("\033[91mInvalid signature")
-            raise Exception("Invalid signature")
+            raise BingoException("Invalid signature")
+
+
+
+    def verify_inner_signature(self, msg):
+        if msg["data"]["type"] == "start":
+            return
+        content = json.dumps(msg["data"]).encode("utf-8")
+        signature = BytesSerializer.from_base64_str(msg["signature"])
+        seq = msg["data"]["seq"]
+        public_key = self.players_info[str(seq)][-1]
+        if not Ascrypt.verify(Ascrypt.deserialize_key(public_key), content, signature):
+            print("\033[91mInvalid signature")
+            raise BingoException("Invalid signature")
 
 
 
     def handle_redirect(self, conn, data, signature):
         msg = data["msg"]
-        # TODO check signature
+        self.verify_inner_signature(msg)
         self.handlers[msg["data"]["type"]](conn, msg["data"], msg["signature"])
 
 
@@ -110,7 +130,7 @@ class User:
             for idx, num in enumerate(self.deck):
                 if num in card:
                     counter += 1
-                if counter == 25:
+                if counter == N:
                     win_pos.append((seq, idx))
                     break
         win_pos.sort(key=lambda x: (x[1], x[0]))

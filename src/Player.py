@@ -1,4 +1,4 @@
-from src.User import User
+from src.User import User, M, N
 from src.CryptoUtils import Scrypt, Ascrypt, BytesSerializer
 import random
 
@@ -35,10 +35,11 @@ class Player(User):
 
 
     def handle_start(self, conn, data, signature):
+        self.players_info = data["players"]
         self.sym_key = Scrypt.generate_symmetric_key()
         self.iv = Scrypt.generate_iv()
         print("\n\nGame started")
-        self.card = random.sample(range(0, 100), 25)
+        self.card = random.sample(range(0, M), N)
         self.cards.append((self.card, self.seq))
         print("Card generated")
         print("My card: ", self.card)

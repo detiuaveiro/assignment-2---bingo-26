@@ -70,10 +70,11 @@ class BingoProtocol:
 
 
     @msg_sender
-    def join_response(self, sock: socket.socket, accepted: bool, seq: int):
+    def join_response(self, sock: socket.socket, accepted: bool, seq: int, parea_public_key: str):
         return {
             "accepted": accepted, 
-            "seq": seq
+            "seq": seq,
+            "parea_public_key": parea_public_key
         }
 
 
@@ -92,7 +93,7 @@ class BingoProtocol:
     
 
     @msg_sender
-    def start(self, sock: socket.socket, players: list):
+    def start(self, sock: socket.socket, players: dict):
         return {
             "seq": self.seq,
             "players": players

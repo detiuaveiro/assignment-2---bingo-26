@@ -7,6 +7,9 @@ from src.CryptoUtils import Ascrypt, BytesSerializer
 
 logging.basicConfig(filename='playing_area.log', encoding='utf-8', level=logging.DEBUG, format='%(levelname)s: %(message)s')
 
+class BingoException(Exception):
+    pass
+
 class PlayingArea:
     
     def __init__(self, host, port):
@@ -20,7 +23,6 @@ class PlayingArea:
         self.sock.setblocking(False)
         self.sel.register(self.sock, selectors.EVENT_READ, self.accept)
 
-        self.proto = BingoProtocol("PRIVATE_KEY")
         self.users_by_seq = {}        # {seq: conn}
         self.users = {}               # {conn: (seq, nickname, public_key)}
         self.caller = None
@@ -32,6 +34,7 @@ class PlayingArea:
 
         # asymmetric encryption
         self.private_key, self.public_key = Ascrypt.generate_key_pair()
+        self.proto = BingoProtocol(self.private_key)
 
         self.handlers = { 
             "disqualify": self.handle_disqualify,
@@ -66,7 +69,7 @@ class PlayingArea:
     def handle_join(self, conn, data, signature):
         if data["client"] == "player":
             self.current_id += 1
-            self.proto.join_response(conn, not self.playing, self.current_id)
+            self.proto.join_response(conn, not self.playing, self.current_id, Ascrypt.serialize_key(self.public_key))
             if not self.playing:
                 self.users[conn] = (self.current_id, data["nickname"], data["public_key"])
                 self.users_by_seq[self.current_id] = conn
@@ -75,7 +78,7 @@ class PlayingArea:
                 print("Join request denied")
                 self.close_conn(conn)
         elif data["client"] == "caller":
-            self.proto.join_response(conn, self.caller is None, 0)
+            self.proto.join_response(conn, self.caller is None, 0, Ascrypt.serialize_key(self.public_key))
             if self.caller is None:
                 self.users[conn] = (0, data["nickname"], data["public_key"])
                 self.users_by_seq[0] = conn
@@ -85,7 +88,6 @@ class PlayingArea:
                 print("Join request denied, caller already exists")
                 self.close_conn(conn)
         else:
-            self.proto.join_response(conn, False)
             print("Join request denied, unknown client")
             self.close_conn(conn)
 
@@ -174,32 +176,34 @@ class PlayingArea:
     def read(self, conn, mask):
         data = self.proto.rcv(conn)
         if data:
-            try:
+            #try:
                 self.verify_seq(conn, data)
                 self.verify_type(conn, data)
                 self.verify_signature(conn, data)   
 
                 self.handlers[data["data"]["type"]](conn, data["data"], data["signature"])
-            except Exception as e:
-                print("Invalid message received")
-                print("Error:", e)
-                exit(1)
+            #except Exception as e:
+            #    print("Invalid message received")
+            #    print("Error:", e)
+            #    exit(1)
         else:
             self.close_conn(conn)
 
 
     
     def verify_seq(self, conn, data) -> bool:
+        if data["data"]["type"] == "join":
+            return
         seq = data["data"]["seq"]
         if self.users[conn][0] != seq:
-            raise Exception("Wrong sequence number")
+            raise BingoException("Wrong sequence number")
 
 
         
     def verify_type(self, conn, data) -> bool:
         type_ = data["data"]["type"]
         if type_ not in self.handlers:
-            raise Exception("Unknown message type")
+            raise BingoException("Unknown message type")
         if type_ == "join":
             return
         available_types = {
@@ -216,30 +220,30 @@ class PlayingArea:
         user_type, = [u for u in available_types if type_ in available_types[u]]
         if user_type == "caller":
             if conn != self.caller:
-                raise Exception("Only caller can send this message")
+                raise BingoException("Only caller can send this message")
         elif user_type == "player":
             if conn not in self.other_conns(self.caller):
-                raise Exception("Only players can send this message")
+                raise BingoException("Only players can send this message")
         elif user_type == "user":
             if conn not in self.users:
-                raise Exception("Only users can send this message")
+                raise BingoException("Only users can send this message")
 
 
 
     def verify_signature(self, conn, data) -> bool:
         content = json.dumps(data["data"]).encode("utf-8")
         signature = BytesSerializer.from_base64_str(data["signature"])
-        if not Ascrypt.verify(Ascrypt.deserialize_key(self.caller[conn][2]), content, signature):
+        if conn in self.users and not Ascrypt.verify(Ascrypt.deserialize_key(self.users[conn][2]), content, signature):
             print("\033[91mInvalid signature")
-            raise Exception("Invalid signature")
-        elif data["type"] == "join":
+            raise BingoException("Invalid signature")
+        elif data["data"]["type"] == "join":
             if not Ascrypt.verify(Ascrypt.deserialize_key(data["data"]["public_key"]), content, signature):
                 print("\033[91mInvalid signature")
-                raise Exception("Invalid signature")
+                raise BingoException("Invalid signature")
             # TODO
             # if not Ascrypt.verify_signature(content, signature, PUBLIC_KEY_CC):
             #     print("\033[91mInvalid Citizen Card signature")
-            #     raise Exception("Invalid Citizen Card signature")
+            #     raise BingoException("Invalid Citizen Card signature")
             #     return
 
 

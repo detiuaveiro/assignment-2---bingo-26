@@ -102,6 +102,6 @@ class Ascrypt:
                 ),
                 hashes.SHA256()
             )
+            return True
         except:
             return False
-        return True

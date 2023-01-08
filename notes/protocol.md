@@ -45,7 +45,8 @@ type:
     data = { 
         "type": "join_response",
         "accepted": bool,
-        "seq": int
+        "seq": int,
+        "parea_public_key": str,
     }
 
 - ready
@@ -64,7 +65,7 @@ type:
     data = {
         "type": "start",
         "seq": int,
-        "players": [],
+        "players": {},
     }
 
 - card
