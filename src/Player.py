@@ -10,6 +10,7 @@ class Player(User):
         self.proto.join(self.sock, self.cc, "player", nickname, Ascrypt.serialize_key(self.pub_key))
 
         self.handlers = {
+            "redirect": self.handle_redirect,
             "disqualify": self.handle_disqualify,
             "logs_response": self.handle_logs_response,
             "join_response": self.handle_join_response,
@@ -24,16 +25,16 @@ class Player(User):
         self.card = None
 
 
-    def handle_disqualify(self, conn, data):
+    def handle_disqualify(self, conn, data, signature):
         pass
 
 
 
-    def handle_start(self, conn, data):
+    def handle_start(self, conn, data, signature):
 
         # TODO gerar chaves simetricas
 
-        print("Game started")
+        print("\n\nGame started")
         self.card = random.sample(range(0, 100), 25)
         self.cards.append((self.card, self.seq))
         print("Card generated")
@@ -42,13 +43,13 @@ class Player(User):
 
 
 
-    def handle_card(self, conn, data):
+    def handle_card(self, conn, data, signature):
         print("Received card from ", data["seq"])
         self.cards.append((data["card"], data["seq"]))
 
 
 
-    def handle_deck(self, conn, data):
+    def handle_deck(self, conn, data, signature):
         print("Deck received from ", data["seq"])
         deck = data["deck"]
         random.shuffle(deck)
@@ -59,7 +60,7 @@ class Player(User):
  
 
 
-    def handle_final_deck(self, conn, data):
+    def handle_final_deck(self, conn, data, signature):
         print("Final deck received from caller")
         self.deck = data["deck"]
         # TODO send key and iv
@@ -68,7 +69,7 @@ class Player(User):
 
 
 
-    def handle_keys_response(self, conn, data):
+    def handle_keys_response(self, conn, data, signature):
         print("Keys received")
 
         # TODO decrypt deck
@@ -79,6 +80,9 @@ class Player(User):
 
 
 
-    def handle_final_winners(self, conn, data):
+    def handle_final_winners(self, conn, data, signature):
         print("Final winners received from caller")
         print("Winners: ", data["winners"])
+        self.cards = []
+        self.deck = []
+        self.players_info = []

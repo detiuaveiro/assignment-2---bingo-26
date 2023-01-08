@@ -10,8 +10,8 @@ class Caller(User):
         # Join playing area as caller
         self.proto.join(self.sock, self.cc, "caller", nickname, Ascrypt.serialize_key(self.pub_key))
 
-        self.deck = random.sample(range(0, 100), 100)
         self.handlers = {
+            "redirect": self.handle_redirect,
             "logs_response": self.handle_logs_response,
             "join_response": self.handle_join_response,
             "ready_response": self.handle_ready_response,
@@ -21,22 +21,22 @@ class Caller(User):
             "winners": self.handle_winners
         }
 
-        # wait 30 seconds for players to join
-        time.sleep(5)
-        self.proto.ready(self.sock)
-        print("Sent ready")
-        # self.proto.start(self.sock)
+        self.deck = []
         self.num_players = 0
         self.winners_recv = 0
         self.decks_recv = 0
         self.winners = []
 
+        time.sleep(2)
+        self.proto.ready(self.sock)
+        print("Sent ready")
 
 
-    def handle_ready_response(self, conn, data: dict):
+
+    def handle_ready_response(self, conn, data, signature):
         print("Received ready response")
         self.players_info = data["players"]
-        self.num_players = len(self.players_info)
+        self.num_players = len(self.players_info) - 1
 
         # TODO sign players_info
 
@@ -45,26 +45,19 @@ class Caller(User):
 
 
 
-    def handle_card(self, conn, data):
+    def handle_card(self, conn, data, signature):
         print("Received card from player ", data["seq"])
+
+        # TODO verificar card
+
         self.cards.append((data["card"], data["seq"]))
-
         if len(self.cards) == self.num_players:
+            self.deck = random.sample(range(0, 100), 100)
             self.proto.deck(self.sock, self.deck)
-        
-
-        # print("Received card from ", data["seq"])
-        # self.cards.append((data["card"], data["seq"]))
-        # if len(self.cards) == self.num_players:
-
-        #     # encrypt each number in deck with sym_key
-        #     print("Original deck: ", self.deck)
-        #     encrypted_deck = Scrypt.encrypt_list(self.deck, self.sym_key, self.iv, "CBC", True)
-        #     self.proto.deck(self.sock, encrypted_deck, self.seq)
 
 
 
-    def handle_deck(self, conn, data: dict):
+    def handle_deck(self, conn, data, signature):
         print("Received deck from player ", data["seq"])
         self.decks_recv += 1
 
@@ -77,7 +70,7 @@ class Caller(User):
 
 
 
-    def handle_keys_response(self, conn, data):
+    def handle_keys_response(self, conn, data, signature):
         print("Keys received")
 
         # TODO decrypt deck with keys
@@ -87,7 +80,7 @@ class Caller(User):
         
 
 
-    def handle_winners(self, conn, data):
+    def handle_winners(self, conn, data, signature):
         print("Received winners from ", data["seq"])
         # TODO verificar se está correto, senao banir
         self.winners_recv += 1
@@ -96,3 +89,13 @@ class Caller(User):
             self.proto.final_winners(self.sock, self.winners)
             print("Sent final winners")
 
+            self.num_players = 0
+            self.winners_recv = 0
+            self.decks_recv = 0
+            self.winners = []
+            self.cards = []
+            self.deck = []
+            self.players_info = []
+            time.sleep(5)
+            print("\n\n")
+            self.proto.ready(self.sock)

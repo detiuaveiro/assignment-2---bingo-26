@@ -5,38 +5,6 @@ from src.CryptoUtils import Ascrypt
 
 
 
-def player_check(func):
-    def wrapper(self, conn: socket.socket, data: dict):
-        if conn in self.players:
-            func(self, conn, data)
-        else:
-            print("Invalid message received")
-            self.close_conn(conn)
-    return wrapper
-
-
-
-def caller_check(func):
-    def wrapper(self, conn: socket.socket, data: dict):
-        if conn in self.caller:
-            func(self, conn, data)
-        else:
-            print("Invalid message received")
-            self.close_conn(conn)
-    return wrapper
-
-
-
-def user_check(func):
-    def wrapper(self, conn: socket.socket, data: dict):
-        if conn in self.players or conn in self.caller:
-            func(self, conn, data)
-        else:
-            print("Invalid message received")
-            self.close_conn(conn)
-    return wrapper
-
-
 
 class PlayingArea:
     
@@ -53,13 +21,12 @@ class PlayingArea:
 
         self.proto = BingoProtocol("PRIVATE_KEY")
         self.users_by_seq = {}        # {seq: conn}
-        self.players = {}               # {conn: (seq, nickname, public_key)}
-        self.caller = {}                # {conn: (seq, nickname, public_key)}
+        self.users = {}               # {conn: (seq, nickname, public_key)}
+        self.caller = None
         self.current_id = 0
         self.total_shuffles = 0
         self.all_keys = {}
         self.playing = False            # blocks new players from joining
-        self.checking_winner = False    # blocks new cards from being played
         self.all_msgs = []
 
         # asymmetric encryption
@@ -81,32 +48,33 @@ class PlayingArea:
 
 
 
-    def handle_disqualify(self, conn: socket.socket, data: dict):
+    def handle_disqualify(self, conn, data, signature):
         pass
 
 
 
-    def handle_get_logs(self, conn: socket.socket, data: dict):
+    def handle_get_logs(self, conn, data, signature):
         pass
 
 
 
-    def handle_join(self, conn: socket.socket, data: dict):
+    def handle_join(self, conn, data, signature):
         if data["client"] == "player":
             self.current_id += 1
             self.proto.join_response(conn, not self.playing, self.current_id)
             if not self.playing:
-                self.players[conn] = (self.current_id, data["nickname"], data["public_key"])
+                self.users[conn] = (self.current_id, data["nickname"], data["public_key"])
                 self.users_by_seq[self.current_id] = conn
                 print("Player joined playing area")
             else:
                 print("Join request denied")
                 self.close_conn(conn)
         elif data["client"] == "caller":
-            self.proto.join_response(conn, len(self.caller) == 0, 0)
-            if len(self.caller) == 0:
-                self.caller[conn] = (0, data["nickname"], data["public_key"])
+            self.proto.join_response(conn, self.caller is None, 0)
+            if self.caller is None:
+                self.users[conn] = (0, data["nickname"], data["public_key"])
                 self.users_by_seq[0] = conn
+                self.caller = conn
                 print("Caller joined playing area")
             else:
                 print("Join request denied, caller already exists")
@@ -118,84 +86,79 @@ class PlayingArea:
 
 
 
-    def handle_ready(self, conn: socket.socket, data: dict):
+    def handle_ready(self, conn, data, signature):
         print("Ready received")
         self.playing = True
-        self.proto.ready_response(conn, [tup for tup in self.players.values()])
+        self.proto.ready_response(conn, [tup for tup in self.users.values()])
         print("Ready response sent")
 
 
 
-    def handle_start(self, conn: socket.socket, data: dict):
+    def handle_start(self, conn, data, signature):
         print("Start received")
-        self.proto.seq = data["seq"]
         for c in self.other_conns(conn):
-            self.proto.start(c, data["players"])
+            self.proto.redirect(c, data, signature)
         print("Start sent to other players")
 
 
 
-    def handle_card(self, conn: socket.socket, data: dict):
+    def handle_card(self, conn, data, signature):
         print("Card received from", data["seq"])
-        self.proto.seq = data["seq"]
         for c in self.other_conns(conn):
-            self.proto.card(c, data["card"])
+            self.proto.redirect(c, data, signature)
         print("Card sent to other players")
 
 
 
-    def handle_deck(self, conn: socket.socket, data: dict):
+    def handle_deck(self, conn, data, signature):
         print("Deck received from", data["seq"])
-        deck = data["deck"]
         if self.total_shuffles != 0:
-            self.proto.deck(self.users_by_seq[0], deck)
-        print("Deck sent to caller")
-        if self.total_shuffles < len(self.players):
-            self.proto.seq = data["seq"]
-            self.proto.deck(self.users_by_seq[self.total_shuffles + 1], deck)
+            self.proto.redirect(self.caller, data, signature)
+            print("Deck sent to caller")
+        if self.total_shuffles < len(self.users) - 1:
+            self.proto.redirect(self.users_by_seq[self.total_shuffles + 1], data, signature)
             self.total_shuffles += 1
             print("Deck sent to next player")
 
     
 
-    def handle_final_deck(self, conn: socket.socket, data: dict):
+    def handle_final_deck(self, conn, data, signature):
         print("Final deck received from", data["seq"])
-        self.proto.seq = data["seq"]
         for c in self.other_conns(conn):
-            self.proto.final_deck(c, data["deck"])
+            self.proto.redirect(c, data, signature)
         print("Final deck sent to other players")
 
 
 
-    def handle_key(self, conn: socket.socket, data: dict):
+    def handle_key(self, conn, data, signature):
         print("Key received from", data["seq"])
         self.all_keys[data["seq"]] = data["key"]
-        if len(self.all_keys) == len(self.players) + 1:
+        if len(self.all_keys) == len(self.users):
             keys_lst = [self.all_keys[i] for i in range(self.current_id+1) if i in self.all_keys]
             keys_lst.reverse()
-            for c in self.players:
-                self.proto.keys_response(c, keys_lst)
-            for c in self.caller:
+            for c in self.users:
                 self.proto.keys_response(c, keys_lst)
             print("Keys sent to all players")
 
 
     
-    def handle_winners(self, conn: socket.socket, data: dict):
+    def handle_winners(self, conn, data, signature):
         print("Winners received from", data["seq"])
-        self.proto.seq = data["seq"]
-        for c in self.caller:
-            self.proto.winners(c, data["winners"])
+        self.proto.redirect(self.caller, data, signature)
         print("Winners sent to caller")
 
 
     
-    def handle_final_winners(self, conn: socket.socket, data: dict):
+    def handle_final_winners(self, conn, data, signature):
         print("Final winners received from", data["seq"])
-        self.proto.seq = data["seq"]
         for c in self.other_conns(conn):
-            self.proto.final_winners(c, data["winners"])
+            self.proto.redirect(c, data, signature)
         print("Final winners sent to other players")
+        self.playing = False
+        self.current_id = 0
+        self.total_shuffles = 0
+        self.all_keys = {}
+        self.all_msgs = []
 
 
 
@@ -210,36 +173,33 @@ class PlayingArea:
     def read(self, conn, mask):
         data = self.proto.rcv(conn)
         if data:
-            try:
+            # try:
+                # TODO verificar seq com conn
+                # TODO verificar assinatura
                 # print("Received message: ", data)
-                self.handlers[data["type"]](conn, data["data"])
-            except Exception as e:
-                print("Invalid message received")
-                print("Error:", e)
-                exit(1)
+                self.handlers[data["data"]["type"]](conn, data["data"], data["signature"])
+            # except Exception as e:
+            #     print("Invalid message received")
+            #     print("Error:", e)
+            #     exit(1)
         else:
             self.close_conn(conn)
 
     
 
     def close_conn(self, conn: socket.socket):
-        if conn in self.players:
-            print("Connection closed player: ", conn.getpeername())
-            del self.users_by_seq[self.players[conn][0]]
-            del self.players[conn]
-        if conn in self.caller:
-            print("Connection closed caller: ", conn.getpeername())
-            del self.caller[conn]
+        if conn in self.users:
+            print("Connection closed user: ", conn.getpeername())
+            del self.users_by_seq[self.users[conn][0]]
+            del self.users[conn]
+
         self.sel.unregister(conn)
         conn.close()
 
 
 
     def other_conns(self, conn: socket.socket):
-        for c in self.players:
-            if c != conn:
-                yield c
-        for c in self.caller:
+        for c in self.users:
             if c != conn:
                 yield c
 

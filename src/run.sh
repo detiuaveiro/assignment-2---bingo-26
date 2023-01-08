@@ -10,9 +10,9 @@ function main()
     gnome-terminal \
     --tab -t "Playing Area" -e "$SHELL -c 'python3 playing_area.py; exec $SHELL'" --active \
     --tab -t "Caller" -e "$SHELL -c 'python3 caller.py -n caller; exec $SHELL'" \
-    --tab -t "Player1" -e "$SHELL -c 'python3 player.py -n p1; exec $SHELL'" \
-    --tab -t "Player2" -e "$SHELL -c 'python3 player.py -n p2; exec $SHELL'" \
-    --tab -t "Player3" -e "$SHELL -c 'python3 player.py -n p3; exec $SHELL'"
+    --tab -t "Player1" -e "$SHELL -c 'sleep 0.3;python3 player.py -n p1; exec $SHELL'" \
+    --tab -t "Player2" -e "$SHELL -c 'sleep 0.6;python3 player.py -n p2; exec $SHELL'" \
+    --tab -t "Player3" -e "$SHELL -c 'sleep 0.9;python3 player.py -n p3; exec $SHELL'"
     exit 0
 }
 

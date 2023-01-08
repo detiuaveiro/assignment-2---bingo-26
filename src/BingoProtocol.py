@@ -8,9 +8,11 @@ def msg_sender(func):
     """
     def wrapper(*args, **kwargs):
         res = func(*args, **kwargs)
+        res["type"] = func.__name__
+        # TODO implement signature
         msg = {
-            "type": func.__name__,
             "data": res,
+            "signature": "SIGNATURE"
         }
         if args[1] is not None:
             args[0].send(args[1], json.dumps(msg).encode('utf-8'))
@@ -23,6 +25,16 @@ class BingoProtocol:
     def __init__(self, private_key: bytes):
         self.seq = None
         self.private_key = private_key
+
+
+    @msg_sender
+    def redirect(self, sock: socket.socket, data: dict, signature: str):
+        return {
+            "msg": {
+                "data": data,
+                "signature": signature
+            }
+        }
 
 
     @msg_sender

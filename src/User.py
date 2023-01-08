@@ -41,7 +41,7 @@ class User:
         if data:
             # try:
                 # print("Received:", data)
-                self.handlers[data["type"]](conn, data["data"])
+                self.handlers[data["data"]["type"]](conn, data["data"], data["signature"])
             # except Exception as e:
                 # print("Invalid message received")
                 # print("Error:", e)
@@ -54,11 +54,18 @@ class User:
 
 
 
-    def handle_join_response(self, conn: socket.socket, data: dict):
+    def handle_redirect(self, conn, data, signature):
+        msg = data["msg"]
+        self.handlers[msg["data"]["type"]](conn, msg["data"], msg["signature"])
+
+
+
+    def handle_join_response(self, conn, data, signature):
         if data["accepted"]:
             print("Joined playing area")
             self.seq = data["seq"]
             self.proto.seq = self.seq
+            print("My seq:", self.seq)
         else:
             print("Join request denied")
             self.sel.unregister(self.sock)
@@ -75,20 +82,21 @@ class User:
     def get_winners(self):
         win_pos = []
         for card, seq in self.cards:
-            for idx in range(25, len(self.deck)+1):
-                card_set = set(card)
-                deck_set = set(self.deck[:idx])
-                if card_set.issubset(deck_set):
+            counter = 0
+            for idx, num in enumerate(self.deck):
+                if num in card:
+                    counter += 1
+                if counter == 25:
                     win_pos.append((seq, idx))
                     break
-        win_pos.sort(key=lambda x: x[1])
-        winners = set()
+        win_pos.sort(key=lambda x: (x[1], x[0]))
+        winners = []
         for winner in win_pos:
             if winner[1] == win_pos[0][1]:
-                winners.add(winner[0])
+                winners.append(winner[0])
             else:
                 break
-        return list(winners)
+        return winners
 
 
     def run(self):
