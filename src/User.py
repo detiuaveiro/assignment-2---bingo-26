@@ -118,7 +118,7 @@ class User:
     def handle_logs_response(self, conn, data, signature):
         print("Logs received\n")
         for log in data["logs"]:
-            print(log)
+            print(f"{log.split(', ')[0]}, {log.split(', ')[1]}, {log.split(', ')[2]}, {log.split(', ')[3]}")
         print()
 
         self.options()

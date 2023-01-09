@@ -62,8 +62,11 @@ class PlayingArea:
 
     def handle_disqualify(self, conn, data, signature):
         print(f"Player {data['target_seq']} disqualified for : ", data["reason"])
+        self.log_event(f"Player {data['target_seq']} disqualified for : ", data["seq"], signature)
         for c in self.other_conns(conn):
             self.proto.redirect(c, data, signature)
+            s = self.proto.redirect(None, data, signature)["signature"]
+            self.log_event(f"Disqualification message sent to player {self.users[c][0]}", None, s)
         print("Disqualification message sent to other players")
         self.close_conn(self.users_by_seq[data["target_seq"]])
         self.reset()
@@ -82,7 +85,7 @@ class PlayingArea:
             self.current_id += 1
             self.proto.join_response(conn, not self.playing, self.current_id, Ascrypt.serialize_key(self.public_key))
             s = self.proto.join_response(None, not self.playing, self.current_id, Ascrypt.serialize_key(self.public_key))["signature"]
-            self.log_event("Join response sent", "pa", s)
+            self.log_event("Join response sent", None, s)
             if not self.playing:
                 self.users[conn] = (self.current_id, data["nickname"], data["public_key"])
                 self.users_by_seq[self.current_id] = conn
@@ -95,6 +98,7 @@ class PlayingArea:
         elif data["client"] == "caller":
             self.proto.join_response(conn, self.caller is None, 0, Ascrypt.serialize_key(self.public_key))
             s = self.proto.join_response(None, self.caller is None, 0, Ascrypt.serialize_key(self.public_key))["signature"]
+            self.log_event("Join response sent", None, s)
 
             if self.caller is None:
                 self.users[conn] = (0, data["nickname"], data["public_key"])
@@ -113,7 +117,7 @@ class PlayingArea:
 
 
     def handle_ready(self, conn, data, signature):
-        # self.logs = []
+        self.logs = []
         print("Ready received")
         self.log_event("Ready received", data["seq"], signature)
         self.playing = True
@@ -121,7 +125,7 @@ class PlayingArea:
         self.proto.ready_response(conn, players)
         print("Ready response sent")
         s = self.proto.ready_response(None, players)["signature"]
-        self.log_event("Ready response sent", "pa", s)
+        self.log_event("Ready response sent", None, s)
         if len(players) <= 1:
             self.reset()
 
@@ -133,7 +137,7 @@ class PlayingArea:
         for c in self.other_conns(conn):
             self.proto.redirect(c, data, signature)
             s = self.proto.redirect(None, data, signature)["signature"]
-            self.log_event(f"Start sent to player {self.users[c][0]}", "pa", s)
+            self.log_event(f"Start sent to player {self.users[c][0]}", None, s)
         print("Start sent to other players")
 
 
@@ -144,7 +148,7 @@ class PlayingArea:
         for c in self.other_conns(conn):
             self.proto.redirect(c, data, signature)
             s = self.proto.redirect(None, data, signature)["signature"]
-            self.log_event(f"Card sent to player {self.users[c][0]}", "pa", s)
+            self.log_event(f"Card sent to player {self.users[c][0]}", None, s)
 
         print("Card sent to other players")
 
@@ -157,13 +161,13 @@ class PlayingArea:
             self.proto.redirect(self.caller, data, signature)
             s = self.proto.redirect(None, data, signature)["signature"]
             print("Deck sent to caller")
-            self.log_event("Deck sent to caller", "pa", s)
+            self.log_event("Deck sent to caller", None, s)
         if self.total_shuffles < len(self.users) - 1:
             self.proto.redirect(self.users_by_seq[self.total_shuffles + 1], data, signature)
             s = self.proto.redirect(None, data, signature)["signature"]
             self.total_shuffles += 1
             print("Deck sent to next player")
-            self.log_event("Deck sent to next player", "pa", s)
+            self.log_event("Deck sent to next player", None, s)
 
     
 
@@ -173,7 +177,7 @@ class PlayingArea:
         for c in self.other_conns(conn):
             self.proto.redirect(c, data, signature)
             s = self.proto.redirect(None, data, signature)["signature"]
-            self.log_event(f"Final deck sent to player {self.users[c][0]}", "pa", s)
+            self.log_event(f"Final deck sent to player {self.users[c][0]}", None, s)
         print("Final deck sent to other players")
 
 
@@ -188,7 +192,7 @@ class PlayingArea:
             for c in self.users:
                 self.proto.keys_response(c, keys_lst)
                 s = self.proto.keys_response(None, keys_lst)["signature"]
-                self.log_event(f"Keys sent to player {self.users[c][0]}", "pa", s)
+                self.log_event(f"Keys sent to player {self.users[c][0]}", None, s)
             print("Keys sent to all players")
 
 
@@ -199,7 +203,7 @@ class PlayingArea:
         self.proto.redirect(self.caller, data, signature)
         s = self.proto.redirect(None, data, signature)["signature"]
         print("Winners sent to caller")
-        self.log_event("Winners sent to caller", "pa", s)
+        self.log_event("Winners sent to caller", None, s)
 
 
     
@@ -209,7 +213,7 @@ class PlayingArea:
         for c in self.other_conns(conn):
             self.proto.redirect(c, data, signature)
             s = self.proto.redirect(None, data, signature)["signature"]
-            self.log_event(f"Final winners sent to player {self.users[c][0]}", "pa", s)
+            self.log_event(f"Final winners sent to player {self.users[c][0]}", None, s)
         print("Final winners sent to other players")
         self.reset()
         
