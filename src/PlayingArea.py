@@ -41,7 +41,7 @@ class PlayingArea:
         self.logs = []
 
         # asymmetric encryption
-        self.private_key, self.public_key = Ascrypt.generate_key_pair()
+        self.private_key, self.public_key = Ascrypt.generate_key_pair(3840)
         self.proto = BingoProtocol(self.private_key)
 
         self.handlers = {
@@ -90,7 +90,11 @@ class PlayingArea:
 
 
     def handle_join(self, conn, data, signature):
-        # TODO desencryptar com priv_key
+        try:
+            data["public_key"] = Ascrypt.decrypt_from_str(self.private_key, data["public_key"]).decode("utf-8")
+            data["cc_certificate"] = Ascrypt.decrypt_from_str(self.private_key, data["cc_certificate"]).decode("utf-8")
+        except:
+            raise BingoException("Could not decrypt User's public key and citizen card certificate")
 
         if data["client"] == "player":
             self.current_id += 1

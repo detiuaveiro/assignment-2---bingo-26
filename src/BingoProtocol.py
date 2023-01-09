@@ -15,11 +15,15 @@ def msg_sender(func):
             "data": res,
             "signature": BytesSerializer.to_base64_str(signature)
         }
-        #CARDif res["type"] == "join":
+        if res["type"] == "join":
         #CARD   cc_signature = args[2].sign(json.dumps(res).encode("utf-8"))
         #CARD   msg["cc_signature"] = BytesSerializer.to_base64_str(cc_signature)
+            parea_pub_key = args[-1]
+            msg["data"]["public_key"] = Ascrypt.encrypt_to_str(parea_pub_key, msg["data"]["public_key"].encode("utf-8"))
+            msg["data"]["cc_certificate"] = Ascrypt.encrypt_to_str(parea_pub_key, msg["data"]["cc_certificate"].encode("utf-8"))
+        msg_bytes = json.dumps(msg).encode("utf-8")
         if args[1] is not None:
-            args[0].send(args[1], json.dumps(msg).encode('utf-8'))
+            args[0].send(args[1], msg_bytes)
         return msg
     return wrapper
 
@@ -75,8 +79,7 @@ class BingoProtocol:
 
 
     @msg_sender
-    def join(self, sock: socket.socket, cc: CitizenCard, client: str, nickname: str, public_key: str, parea_pub_key: bytes):
-        # TODO encryptar com parea_pub_key
+    def join(self, sock: socket.socket, cc: CitizenCard, client: str, nickname: str, public_key: str, parea_pub_key):
         return {
             "client": client,
             "nickname": nickname,

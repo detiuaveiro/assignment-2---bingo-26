@@ -2,14 +2,21 @@ from src.BingoProtocol import BingoProtocol
 from src.CryptoUtils import Scrypt, Ascrypt, BytesSerializer
 from src.CitizenCard import CitizenCard
 
-# ------------------------------------------------------------------
-import PyKCS11
-import json
-from cryptography import x509
-from cryptography.hazmat.backends import default_backend as db
+_, other_pub_key = Ascrypt.generate_key_pair()
+msg = Ascrypt.serialize_key(other_pub_key).encode("utf-8")
+priv_key, pub_key = Ascrypt.generate_key_pair(3840)
+enc_msg = Ascrypt.encrypt_to_str(pub_key, msg)
+dec_msg = Ascrypt.decrypt_from_str(priv_key, enc_msg)
+print(msg == dec_msg)
 
-# Player.py
-cc = CitizenCard("1111")
+# # ------------------------------------------------------------------
+# import PyKCS11
+# import json
+# from cryptography import x509
+# from cryptography.hazmat.backends import default_backend as db
+
+# # Player.py
+# cc = CitizenCard("1111")
 
 
 # cert_obj = cc.session.findObjects([

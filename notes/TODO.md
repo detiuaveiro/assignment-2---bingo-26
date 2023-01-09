@@ -13,12 +13,11 @@ player misbehave:
 - [X] invalid signature
 - [X] enviar msg de outras entidades(player envia finnal winners)
 - [X] enviar varias msg(cards, decks, winners)
-- [ ] sym key invalida
 
 caller misbehave: (players wont detect)
 - [X] change winner
 - [X] disqualify without reason
 
-- [ ] limitar usos das keys (so fiz pros players)
+- [X] limitar usos das keys (so fiz pros players)
 
 - [ ] SSL

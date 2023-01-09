@@ -113,3 +113,17 @@ class Ascrypt:
             return True
         except:
             return False
+
+    def encrypt_to_str(public_key, content):
+        return BytesSerializer.to_base64_str(
+            public_key.encrypt(
+                content,
+                padding.PKCS1v15()
+            )
+        )
+
+    def decrypt_from_str(private_key, content):
+        return private_key.decrypt(
+            BytesSerializer.from_base64_str(content),
+            padding.PKCS1v15()
+        )
