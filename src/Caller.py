@@ -3,6 +3,22 @@ from src.CryptoUtils import Ascrypt, Scrypt, BytesSerializer
 import random
 import sys
 
+MISBEHAVE_PROBABILITY = 0.5
+
+class C:
+    RED = '\033[91m'       # error
+    GREEN = '\033[92m'     # success
+    YELLOW = '\033[93m'    # warning
+    RESET = '\033[0m'      # reset
+
+def check_playing(func):
+    def wrapper(self, *args, **kwargs):
+        if self.playing:
+            return func(self, *args, **kwargs)
+        return
+    return wrapper
+
+
 class Caller(User):
     def __init__(self, nickname, parea_host, parea_port, pin):
         super().__init__(nickname, parea_host, parea_port, pin)
@@ -31,6 +47,15 @@ class Caller(User):
         self.decks_by_seq = []
         self.winners_by_seq = []
 
+        self.mb_wrong_winner = False
+        self.mb_wrong_disqualify = False
+
+        if random.random() < MISBEHAVE_PROBABILITY:
+            num = random.randint(0, 1)
+            if num == 0:
+                self.mb_wrong_winner = True
+            elif num == 1:
+                self.mb_wrong_disqualify = True
 
 
     def handle_join_response(self, conn, data, signature):
@@ -59,7 +84,7 @@ class Caller(User):
         self.iv = Scrypt.generate_iv()
 
 
-
+    @check_playing
     def handle_card(self, conn, data, signature):
         print("Received card from player ", data["seq"])
         self.verify_card(data["card"], data["seq"])
@@ -83,7 +108,7 @@ class Caller(User):
                 raise BingoException("Invalid card number")
 
 
-
+    @check_playing
     def handle_deck(self, conn, data, signature):
         print("Received deck from player ", data["seq"])
         self.verify_deck(self.deck, data["seq"])
@@ -107,7 +132,7 @@ class Caller(User):
             raise BingoException("Invalid deck")
 
 
-
+    @check_playing
     def handle_keys_response(self, conn, data, signature):
         print("Keys received")
         keys = data["keys"]
@@ -123,12 +148,22 @@ class Caller(User):
         print("Winners calculated")
         
 
-
+    @check_playing
     def handle_winners(self, conn, data, signature):
         print("Received winners from ", data["seq"])
         self.verify_winners(data["winners"], data["seq"])
         self.winners_recv += 1
         if self.winners_recv == self.num_players:
+
+            if self.mb_wrong_winner:
+                print(f"{C.YELLOW}Misbehaving: sending wrong winners{C.RESET}")
+                self.winners= [1]
+
+            if self.mb_wrong_disqualify:
+                print(f"{C.YELLOW}Misbehaving: disqualifying player 1 for Invalid winners{C.RESET}")
+                self.proto.disqualify(self.sock, 1, "Invalid winners")
+                self.playing = False
+
             print("Winners: ", self.winners)
             self.proto.final_winners(self.sock, self.winners)
             print("Sent final winners")
@@ -158,6 +193,7 @@ class Caller(User):
         self.cards_by_seq = []
         self.decks_by_seq = []
         self.winners_by_seq = []
+        print("\nGame ended\n")
         print("Options:\n\
             1 - Start game\n\
             2 - Show logs\n\
@@ -180,3 +216,14 @@ class Caller(User):
             print("Sent logs request")
         elif command == "3":
             exit(0)
+
+
+    def handle_exception(self, e, data):
+        if isinstance(e, BingoException):
+            reason = str(e)
+        else:
+            reason = "Invalid message received"
+        taget_seq = data["data"]["msg"]["data"]["seq"]
+        print(f"Disqualifying player {taget_seq} for {reason}")
+        self.proto.disqualify(self.sock, taget_seq, reason)
+        self.playing = False

@@ -27,4 +27,3 @@ python3 playing_area.py (TODO)
 python3 caller.py (TODO)
 python3 player.py (TODO)
 ```
-```

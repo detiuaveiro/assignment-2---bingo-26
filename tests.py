@@ -1,36 +1,68 @@
 from src.BingoProtocol import BingoProtocol
-from src.CryptoUtils import Scrypt, Ascrypt
+from src.CryptoUtils import Scrypt, Ascrypt, BytesSerializer
 from src.CitizenCard import CitizenCard
 
-import logging
-logging.basicConfig(
-    filename='playing_area.log',
-    encoding='utf-8',
-    format='%(asctime)s %(levelname)s %(message)s',
-    level=logging.INFO,
-    datefmt='%Y-%m-%d %H:%M:%S'
-)
+# ------------------------------------------------------------------
+import PyKCS11
+import json
+from cryptography import x509
+from cryptography.hazmat.backends import default_backend as db
+
+# Player.py
+cc = CitizenCard("1111")
+cert_obj = cc.session.findObjects([
+                    (PyKCS11.CKA_CLASS, PyKCS11.CKO_CERTIFICATE),
+                    (PyKCS11.CKA_LABEL, 'CITIZEN AUTHENTICATION CERTIFICATE')
+                    ])[0]
+cert_der_data = cert_obj.to_dict()['CKA_VALUE']
+obj_to_send = json.dumps(cert_der_data).encode("utf-8")
+msg = b'ola mundo'
+signature = cc.sign(msg)
+
+# PlayingArea.py
+recv = obj_to_send
+cert_der_data = bytes(json.loads(recv.decode("utf-8")))
+cert = x509.load_der_x509_certificate(cert_der_data, db())
+pub_key = cert.public_key()
+print(CitizenCard.verify(pub_key, msg, signature))
+for attr in cert.subject.rfc4514_string().split(","):
+    if attr.startswith("C="):
+        country = attr.split("=")[1]
+        print(country)
+        assert country == "PT"
 
 
-class color:
-    WARNING = ('\033[93m', logging.WARNING)
-    FAIL = ('\033[91m', logging.ERROR) 
-    ENDC = ('\033[92m', logging.INFO)
+# ------------------------------------------------------------------
 
-def log(msg, level="INFO"):
-    if level == "ERROR":
-        logging.log(logging.ERROR, msg)
-        print(color.FAIL[0] + f"ERROR: {msg}" + color.ENDC[0])
-    elif level == "WARNING":
-        logging.warning(msg)
-        print(color.WARNING[0] + f"WARNING: {msg}" + color.ENDC[0])
-    else:
-        logging.info(msg)
-        print(color.ENDC[0] + f"INFO: {msg}" + color.ENDC[0])
+# import logging
+# logging.basicConfig(
+#     filename='playing_area.log',
+#     encoding='utf-8',
+#     format='%(asctime)s %(levelname)s %(message)s',
+#     level=logging.INFO,
+#     datefmt='%Y-%m-%d %H:%M:%S'
+# )
 
-log("ola mundo", "ERROR")
-log("ola mundo", "WARNING")
-log("ola mundo", "INFO")
+
+# class color:
+#     WARNING = ('\033[93m', logging.WARNING)
+#     FAIL = ('\033[91m', logging.ERROR) 
+#     ENDC = ('\033[92m', logging.INFO)
+
+# def log(msg, level="INFO"):
+#     if level == "ERROR":
+#         logging.log(logging.ERROR, msg)
+#         print(color.FAIL[0] + f"ERROR: {msg}" + color.ENDC[0])
+#     elif level == "WARNING":
+#         logging.warning(msg)
+#         print(color.WARNING[0] + f"WARNING: {msg}" + color.ENDC[0])
+#     else:
+#         logging.info(msg)
+#         print(color.ENDC[0] + f"INFO: {msg}" + color.ENDC[0])
+
+# log("ola mundo", "ERROR")
+# log("ola mundo", "WARNING")
+# log("ola mundo", "INFO")
 
 
 # ------------------------------------------------------------------
@@ -56,8 +88,8 @@ log("ola mundo", "INFO")
 
 # ------------------------------------------------------------------
 
-#import pickle
-#import random
+# import pickle
+# import random
 # priv_key, pub_key = Ascrypt.generate_key_pair()
 # content = pickle.dumps({"data": 1})
 # signature = Ascrypt.sign(priv_key, content)

@@ -1,5 +1,5 @@
 import PyKCS11
-import binascii
+import json
 from cryptography import x509
 from cryptography.hazmat.backends import default_backend as db
 from cryptography.hazmat.primitives.asymmetric.padding import PKCS1v15
@@ -19,20 +19,37 @@ class CitizenCard:
                             ])[0]
 
 
-    def export_cert_public_key(self):
+    def export_cert(self):
         cert_obj = self.session.findObjects([
                             (PyKCS11.CKA_CLASS, PyKCS11.CKO_CERTIFICATE),
                             (PyKCS11.CKA_LABEL, 'CITIZEN AUTHENTICATION CERTIFICATE')
                             ])[0]
-        cert_der_data = bytes(cert_obj.to_dict()['CKA_VALUE'])
-        cert = x509.load_der_x509_certificate(cert_der_data, db())
-        return cert.public_key()
+        cert_der_data = cert_obj.to_dict()['CKA_VALUE']
+        return json.dumps(cert_der_data)
     
 
     def sign(self, obj):
         signature = bytes(self.session.sign(self.private_key, obj, PyKCS11.Mechanism(PyKCS11.CKM_SHA1_RSA_PKCS, None)))
         #print("signature: ", binascii.hexlify(signature))
         return signature
+
+
+    # static method (not associated with any instance)
+    def get_pub_key_from_cert(obj):
+        cert_der_data = bytes(json.loads(obj))
+        cert = x509.load_der_x509_certificate(cert_der_data, db())
+        return cert.public_key()
+
+
+    # static method (not associated with any instance)
+    def check_nationality(obj, country):
+        cert_der_data = bytes(json.loads(obj))
+        cert = x509.load_der_x509_certificate(cert_der_data, db())
+        for attr in cert.subject.rfc4514_string().split(","):
+            if attr.startswith("C="):
+                c = attr.split("=")[1]
+                return c == country
+        return False
 
 
     # static method (not associated with any instance)

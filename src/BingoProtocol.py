@@ -68,7 +68,7 @@ class BingoProtocol:
             "client": client,
             "nickname": nickname,
             "public_key": public_key,
-            "cc_public_key": "CC_PUBLIC_KEY" #CARDAscrypt.serialize_key(cc.export_cert_public_key())
+            "cc_certificate": "CC_CERT" #CARDcc.export_cert()
         }
 
 

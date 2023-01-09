@@ -15,6 +15,11 @@ N = M//4
 class BingoException(Exception):
     pass
 
+class C:
+    RED = '\033[91m'       # error
+    GREEN = '\033[92m'     # success
+    YELLOW = '\033[93m'    # warning
+    RESET = '\033[0m'      # reset
 
 class User:
     def __init__(self, nickname, parea_host, parea_port, pin):
@@ -58,16 +63,15 @@ class User:
     def read(self, conn, mask):
         data = self.proto.rcv(conn)
         if data:
-            # try:
+            try:
                 if data["data"]["type"] == "join_response":
                     self.parea_pub_key = Ascrypt.deserialize_key(data["data"]["parea_public_key"])
                 self.verify_parea_signature(data)
 
                 self.handlers[data["data"]["type"]](conn, data["data"], data["signature"])
-            # except Exception as e:
-            #     print("Invalid message received")
-            #     print("Error:", e)
-            #     exit(1)
+            except Exception as e:
+                self.handle_exception(e, data)
+
         else:
             print("Playing area closed connection")
             self.sel.unregister(conn)
@@ -80,7 +84,7 @@ class User:
         content = json.dumps(data["data"]).encode("utf-8")
         signature = BytesSerializer.from_base64_str(data["signature"])
         if not Ascrypt.verify(self.parea_pub_key, content, signature):
-            print("\033[91mInvalid signature")
+            #print("\033[91mInvalid signature")
             raise BingoException("Invalid signature")
 
 
@@ -93,17 +97,17 @@ class User:
         seq = msg["data"]["seq"]
         public_key = self.players_info[str(seq)][-1]
         if not Ascrypt.verify(Ascrypt.deserialize_key(public_key), content, signature):
-            print("\033[91mInvalid signature")
+            #print("\033[91mInvalid signature")
             raise BingoException("Invalid signature")
 
 
 
     def handle_disqualify(self, conn, data, signature):
         if data["target_seq"] == self.seq:
-            print("Disqualified for : ", data["reason"])
+            print(f"{C.RED}You have been disqualified for : {data['reason']}{C.RESET}")
             exit(0)
         else:
-            print(f"Player {data['target_seq']} disqualified for : ", data["reason"])
+            print(f"{C.RED}Player {data['target_seq']} disqualified for : {data['reason']}{C.RESET}")
         self.options()
 
 

@@ -69,6 +69,7 @@ class PlayingArea:
             self.log_event(f"Disqualification message sent to player {self.users[c][0]}", None, s)
         print("Disqualification message sent to other players")
         self.close_conn(self.users_by_seq[data["target_seq"]])
+        self.proto.redirect(self.caller, data, signature)
         self.reset()
 
 
@@ -220,6 +221,7 @@ class PlayingArea:
         
 
     def reset(self):
+        print("\nGame ended\n")
         self.users_by_seq = { k: v for k, v in self.users_by_seq.items() if k == 0 }
         self.users = { k: v for k, v in self.users.items() if v[0] == 0 }
         self.current_id = 0
@@ -240,15 +242,14 @@ class PlayingArea:
     def read(self, conn, mask):
         data = self.proto.rcv(conn)
         if data:
-            #try:
+            try:
                 self.verify_seq(conn, data)
                 self.verify_type(conn, data)
-                self.verify_signature(conn, data)   
+                # self.verify_signature(conn, data)   
 
                 self.handlers[data["data"]["type"]](conn, data["data"], data["signature"])
-            #except Exception as e:
-            #    print("Invalid message received")
-            #    print("Error:", e)
+            except Exception as e:
+               self.handle_exception(conn, e, data)
             #    exit(1)
         else:
             self.close_conn(conn)
@@ -284,13 +285,13 @@ class PlayingArea:
         user_type, = [u for u in available_types if type_ in available_types[u]]
         if user_type == "caller":
             if conn != self.caller:
-                raise BingoException("Only caller can send this message")
+                raise BingoException(f"Only caller can send {type_}")
         elif user_type == "player":
             if conn not in self.other_conns(self.caller):
-                raise BingoException("Only players can send this message")
+                raise BingoException(f"Only players can send {type_}")
         elif user_type == "user":
             if conn not in self.users:
-                raise BingoException("Only users can send this message")
+                raise BingoException(f"Only users can send {type_}")
 
 
 
@@ -305,10 +306,30 @@ class PlayingArea:
                 print("\033[91mInvalid signature\033[0m")
                 raise BingoException("Invalid signature")
             #CARDcc_signature = BytesSerializer.from_base64_str(data["cc_signature"])
-            #CARDif not CitizenCard.verify(Ascrypt.deserialize_key(data["data"]["cc_public_key"]), content, cc_signature):
+            #CARDcert_obj = data["data"]["cc_certificate"]
+            #CARDcc_public_key = CitizenCard.get_pub_key_from_cert(cert_obj)
+            #CARDif not CitizenCard.check_nationality(cert_obj, "PT"):
+            #CARD   print("\033[91mNot a Portuguese Citizen Card\033[0m")
+            #CARD   raise BingoException("Not a Portuguese Citizen Card")
+            #CARDif not CitizenCard.verify(cc_public_key, content, cc_signature):
             #CARD   print("\033[91mInvalid Citizen Card signature\033[0m")
             #CARD   raise BingoException("Invalid Citizen Card signature")
 
+
+
+    def handle_exception(self, conn, e, data):
+        if not self.playing:
+            return
+        if isinstance(e, BingoException):
+            reason = str(e)
+        else:
+            reason = "Invalid message received"
+        taget_seq = self.users[conn][0]
+        print(f"Disqualifying player {taget_seq} for {reason}")
+        for c in self.other_conns(conn):
+            self.proto.disqualify(c, taget_seq, reason)
+        self.close_conn(conn)
+        self.reset()
 
 
     def close_conn(self, conn: socket.socket):
