@@ -52,9 +52,7 @@ class BingoProtocol:
 
     @msg_sender
     def get_logs(self, sock: socket.socket):
-        return {
-            "seq": self.seq
-        }
+        return {}
 
 
     @msg_sender

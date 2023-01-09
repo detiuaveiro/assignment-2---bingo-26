@@ -1,7 +1,7 @@
 
 msg = {
     "data": data,
-    "signature": str,
+    "signature": str
 }
 
 type:
@@ -9,7 +9,10 @@ type:
 - redirect
     data = {
         "type": "redirect",
-        "msg": msg,
+        "msg": {
+            "data": data (redirected),
+            "signature": str
+        }
     }
 
 - disqualify
@@ -17,19 +20,18 @@ type:
         "type": "disqualify",
         "seq": int,
         "target_seq": int,
-        "reason": str,
+        "reason": str
     }
 
 - get_logs
     data = {
-        "type": "get_logs",
-        "seq": int,
+        "type": "get_logs"
     }
 
 - logs_response
     data = {
         "type": "logs_response",
-        "logs": [],
+        "logs": list
     }
 
 
@@ -39,6 +41,7 @@ type:
         "client": "player" | "caller",
         "nickname": str,
         "public_key": str,
+        "cc_public_key": str
     }
 
 - join_response
@@ -46,40 +49,40 @@ type:
         "type": "join_response",
         "accepted": bool,
         "seq": int,
-        "parea_public_key": str,
+        "parea_public_key": str
     }
 
 - ready
     data = {
         "type": "ready",
-        "seq": int,
+        "seq": int
     }
 
 - ready_response
     data = {
         "type": "ready_response",
-        "players": [],
+        "players": list
     }
 
 - start
     data = {
         "type": "start",
         "seq": int,
-        "players": {},
+        "players": dict
     }
 
 - card
     data = {
         "type": "card",
         "seq": int,
-        "card": [],
+        "card": list
     }
 
 - deck
     data = {
         "type": "deck",
         "seq": int,
-        "deck": [],
+        "deck": list
     }
     
 
@@ -87,7 +90,7 @@ type:
     data = {
         "type": "final_deck",
         "seq": int,
-        "deck": [],
+        "deck": list
     }
 
 - key
@@ -100,19 +103,19 @@ type:
 - keys_response
     data = {
         "type": "keys_response",
-        "keys": [[str, str], ...]]
+        "keys": list
     }
 
 - winners
     data = {
         "type": "winners",
         "seq": int,
-        "winners": [],
+        "winners": list
     }
 
 - final_winners
     data = {
         "type": "final_winners",
         "seq": int,
-        "winners": [],
+        "winners": list
     }

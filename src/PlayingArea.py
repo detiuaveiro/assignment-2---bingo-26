@@ -59,11 +59,14 @@ class PlayingArea:
             self.proto.redirect(c, data, signature)
         print("Disqualification message sent to other players")
         self.close_conn(self.users_by_seq[data["target_seq"]])
+        self.reset()
 
 
 
     def handle_get_logs(self, conn, data, signature):
+        print("Logs requested")
         self.proto.logs_response(conn, self.all_msgs)
+        print("Logs sent")
 
 
 
@@ -95,10 +98,14 @@ class PlayingArea:
 
 
     def handle_ready(self, conn, data, signature):
+        self.all_msgs = []
         print("Ready received")
         self.playing = True
-        self.proto.ready_response(conn, [tup for tup in self.users.values()])
+        players = [tup for tup in self.users.values()]
+        self.proto.ready_response(conn, players)
         print("Ready response sent")
+        if len(players) <= 1:
+            self.reset()
 
 
 
@@ -162,8 +169,18 @@ class PlayingArea:
         for c in self.other_conns(conn):
             self.proto.redirect(c, data, signature)
         print("Final winners sent to other players")
-        exit(0)
+        self.reset()
         
+        
+
+    def reset(self):
+        self.users_by_seq = { k: v for k, v in self.users_by_seq.items() if k == 0 }
+        self.users = { k: v for k, v in self.users.items() if v[0] == 0 }
+        self.current_id = 0
+        self.total_shuffles = 0
+        self.all_keys = {}
+        self.playing = False
+
 
 
     def accept(self, sock, mask):
@@ -193,7 +210,7 @@ class PlayingArea:
 
     
     def verify_seq(self, conn, data) -> bool:
-        if data["data"]["type"] == "join":
+        if data["data"]["type"] in ["join", "get_logs"]:
             return
         seq = data["data"]["seq"]
         if self.users[conn][0] != seq:
@@ -205,7 +222,7 @@ class PlayingArea:
         type_ = data["data"]["type"]
         if type_ not in self.handlers:
             raise BingoException("Unknown message type")
-        if type_ == "join":
+        if type_ in ["join", "get_logs"]:
             return
         available_types = {
             "caller": [
@@ -215,7 +232,7 @@ class PlayingArea:
                 "card", "winners"
             ],
             "user": [
-                "get_logs", "deck", "key"
+                "deck", "key"
             ]
         }
         user_type, = [u for u in available_types if type_ in available_types[u]]
@@ -253,6 +270,8 @@ class PlayingArea:
             print("Connection closed user: ", conn.getpeername())
             del self.users_by_seq[self.users[conn][0]]
             del self.users[conn]
+        if conn == self.caller:
+            self.caller = None
 
         self.sel.unregister(conn)
         conn.close()

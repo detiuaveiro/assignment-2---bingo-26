@@ -1,6 +1,7 @@
 from src.User import User, M, N
 from src.CryptoUtils import Scrypt, Ascrypt, BytesSerializer
 import random
+import sys
 
 class Player(User):
     def __init__(self, nickname, parea_host, parea_port, pin):
@@ -25,14 +26,6 @@ class Player(User):
         self.card = None
 
 
-    def handle_disqualify(self, conn, data, signature):
-        if data["target_seq"] == self.seq:
-            print("Disqualified for : ", data["reason"])
-            exit(0)
-        else:
-            print(f"Player {data['target_seq']} disqualified for : ", data["reason"])
-
-
 
     def handle_start(self, conn, data, signature):
         self.players_info = data["players"]
@@ -45,6 +38,18 @@ class Player(User):
         print("My card: ", self.card)
         self.proto.card(self.sock, self.card)
         print("Card sent")
+
+
+
+    def handle_join_response(self, conn, data, signature):
+        if data["accepted"]:
+            print("Joined playing area")
+            self.seq = data["seq"]
+            self.proto.seq = self.seq
+            print("My seq:", self.seq)
+        else:
+            print("Join request denied")
+            exit(0)
 
 
 
@@ -93,9 +98,35 @@ class Player(User):
     def handle_final_winners(self, conn, data, signature):
         print("Final winners received from caller")
         print("Winners: ", data["winners"])
-        exit(0)
+        self.options()
+
+
+
+    def options(self):
+        self.seq = None
+        self.cards = []
+        self.deck = []
+        self.players_info = {}
+        self.playing = False
+        self.card = None
+        print(
+            "Options:\n\
+            1 - Play again\n\
+            2 - Show logs\n\
+            3 - Exit"
+        )
+        print("Response: ", end="")
+        sys.stdout.flush()
 
     
     def handle_input(self, command):
-        # TODO
-        pass
+        if self.playing:
+            return
+
+        if command == "1":
+            self.proto.join(self.sock, self.cc, "player", self.nickname, Ascrypt.serialize_key(self.pub_key))
+        elif command == "2":
+            self.proto.get_logs(self.sock)
+            print("Sent logs request")
+        elif command == "3":
+            exit(0)

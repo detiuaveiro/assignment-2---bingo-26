@@ -24,6 +24,7 @@ class User:
         self.cards = []
         self.deck = []
         self.players_info = {}
+        self.playing = False
 
         self.parea_host = parea_host
         self.parea_port = parea_port
@@ -68,7 +69,7 @@ class User:
             #     print("Error:", e)
             #     exit(1)
         else:
-            print("Connection closed by playing area:", conn.getpeername())
+            print("Playing area closed connection")
             self.sel.unregister(conn)
             conn.close()
             exit(0)
@@ -97,6 +98,16 @@ class User:
 
 
 
+    def handle_disqualify(self, conn, data, signature):
+        if data["target_seq"] == self.seq:
+            print("Disqualified for : ", data["reason"])
+            exit(0)
+        else:
+            print(f"Player {data['target_seq']} disqualified for : ", data["reason"])
+        self.options()
+
+
+
     def handle_redirect(self, conn, data, signature):
         msg = data["msg"]
         self.verify_inner_signature(msg)
@@ -104,22 +115,10 @@ class User:
 
 
 
-    def handle_join_response(self, conn, data, signature):
-        if data["accepted"]:
-            print("Joined playing area")
-            self.seq = data["seq"]
-            self.proto.seq = self.seq
-            print("My seq:", self.seq)
-        else:
-            print("Join request denied")
-            self.sel.unregister(self.sock)
-            self.sock.close()
-            exit(0)
-
-
-
-    def handle_logs_response(self, conn, data):
-        pass
+    def handle_logs_response(self, conn, data, signature):
+        print("Logs received")
+        print(data["logs"])
+        self.options()
     
 
 

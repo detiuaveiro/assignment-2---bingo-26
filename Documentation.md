@@ -18,19 +18,271 @@
 └── requirements.txt ------------>
 ```
 
+## Requisitos cumpridos
+
+
 ## Comunicação entre os módulos
 ![](img_link)
 
-## Arranque
-**User**: Player ou Caller
+## Novo jogo
 ```mermaid
 sequenceDiagram
-    participant User
+    actor Caller
     participant PlayingArea
-    User->>PlayingArea: join <br> ===================== <br> client: "player" | "caller",<br> nickname: str ,<br> public_key: str 
-    PlayingArea-->>User: join_response <br> ===================== <br> accepted: bool,<br> seq: int, <br> public_key: str
+    actor PlayerX
+    Caller->>PlayingArea: join
+    PlayingArea-->>Caller: join_response
+    PlayerX->>PlayingArea: join
+    PlayingArea-->>PlayerX: join_response
+    Caller->>PlayingArea: ready
+    PlayingArea-->>Caller: ready_response
+    Caller->>PlayingArea: start
+    PlayingArea->>PlayerX: start (redirect)
 ```
 
+<br>
+
+```python
+- join 
+    msg = {
+        data: {
+            "type": "join",
+            "client": "player" | "caller",
+            "nickname": str,
+            "public_key": str,          # Formato PEM
+            "cc_public_key": str        # Formato PEM
+        },
+        signature: str,                 # Codificada para Base64
+        cc_signature: str               # Codificada para Base64
+    }
+
+- join_response
+    msg = {
+        data: { 
+            "type": "join_response",
+            "accepted": bool,
+            "seq": int,
+            "parea_public_key": str     # Formato PEM
+        }
+        signature: str                  # Codificada para Base64
+    }
+
+- ready
+    msg = {
+        data: {
+            "type": "ready",
+            "seq": int
+        }
+        signature: str                  # Codificada para Base64
+    }
+
+- ready_response
+    msg = {
+        data: {
+            "type": "ready_response",
+            "players": list
+            # [[seq1, nick1, pub_key1], [seq2, nick2, pub_key2], ...]
+        }
+        signature: str
+    }
+
+- start
+    msg = {
+        data: {
+            "type": "start",
+            "seq": int,
+            "players": dict
+        # {seq1: [nick1, pub_key1], seq2: [nick2, pub_key2], ...}
+        }
+        signature: str
+    }
+
+```
+
+1. O *Caller* e o *Player*, com o objetivo de se autenticarem, começam por enviar uma mensagem de join para a *Playing Area*. Nesta mensagem cada user envia o seu tipo (*caller* ou *player*), o seu nickname, a sua chave pública e a chave pública do cartão de cidadão ou cartão virtual. A *Playing Area* ao receber a mensagem, guarda as informações dos utilizadores e de seguida responde com uma mensagem de *join_response* onde indica a sua chave pública e o *sequence number* atribuído ao utilizador. Ainda é passado um campo *accepted* que indica se o processo de join foi bem sucedido ou não.
+
+2. O *Caller* após receber a mensagem de *join_response*, por meio de input do utilizador, envia uma mensagem do tipo *ready* para a *Playing Area* onde passa o seu *seq*. A *Playing Area* ao receber a mensagem e após todos os testes de verificação, responde com uma mensagem de *ready_response*, onde passa uma lista com as informações dos *players* que se conectaram (`seq, nickname, public_key`).
+
+3. O *Caller* ao receber a mensagem de *ready_response*, envia uma mensagem de *start* para a *Playing Area* de modo a sinalizar o inicío do jogo. Por sua vez, quando recebida, esta mensagem será redirecionada para todos os *players*.
+
+<br>
+
+## Troca de *cards*
+```mermaid
+sequenceDiagram
+    actor Caller
+    participant PlayingArea
+    actor PlayerX
+    actor PlayerY
+    PlayerX->>PlayingArea: card
+    PlayingArea->>Caller: card (redirect)
+    PlayingArea->>PlayerY: card (redirect)
+    PlayerY->>PlayingArea: card
+    PlayingArea->>Caller: card (redirect)
+    PlayingArea->>PlayerX: card (redirect)
+```
+
+<br>
+
+```python
+- card
+    msg = {
+        data: {
+            "type": "card",
+            "seq": int,
+            "card": list        # [int, int, ...]
+        }
+        signature: str          # Codificada para Base64
+    }
+
+- redirect
+    msg = {
+        data: {
+            "type": "redirect",
+            "msg": {
+                "data": JSON,
+                "signature": str
+                # assinatura do emissor da mensagem (codificada para Base64)
+            }
+        }
+        signature: str
+        # assinatura da PlayingArea (codificada para Base64)
+    }
+```
+
+1. Cada *Player* após receber a mensagem de confirmação do início do jogo, gera uma chave simétrica, um IV e ainda o card a ser utilizado no jogo. Por fim, o *Player* envia uma mensagem do tipo *card* para a *Playing Area* onde passa o seu *seq*, o card gerado e a assinatura do conteúdo.
+2. A *Playing Area* ao receber a mensagem, verifica a assinatura e redireciona a mensagem para o *Caller* e para os *Players* adversários, de modo a que possam futuramente calcular o(s) winner(s).
+
+
+## Geração e encriptação do *deck*
+```mermaid
+sequenceDiagram
+    actor Caller
+    participant PlayingArea
+    actor Player1
+    actor Player2
+    Caller->>PlayingArea: deck <br> [shuffled + encrypted]
+    PlayingArea->>Player1: deck <br> (redirect)
+    Player1->>PlayingArea: deck <br> [encrypted + shuffled]
+    PlayingArea->>Caller: deck <br> (redirect)
+    PlayingArea->>Player2: deck <br> (redirect)
+    Player2->>PlayingArea: deck <br> [encrypted + shuffled]
+    PlayingArea->>Caller: deck <br> (redirect)
+    Caller->>PlayingArea: final deck
+    PlayingArea->>Player1: final deck <br> (redirect)
+    PlayingArea->>Player2: final deck <br> (redirect)
+```
+
+<br>
+
+```python
+- deck | final_deck
+    msg = {
+        data: {
+            "type": "deck" | "final_deck",
+            "seq": int,
+            "deck": list
+            # [encrypted(int), encrypted(int), ...] -> tudo codificado para Base64 
+        }
+        signature: str  # Codificada para Base64
+    }
+```
+
+1. O *Caller* após receber os cards de todos os *players*, gera um *deck* aleatório (já suffled) e encripta cada um dos seus elementos com a chave simétrica gerada anteriormente. De seguida, envia uma mensagem do tipo *deck* para a *Playing Area* onde passa o seu *seq* e o *deck* gerado.
+
+2. A *Playing Area* ao receber a mensagem, verifica a assinatura e redireciona a mensagem para o primeiro player que deu *join * e para o *Caller*.
+   
+3. Um *Player* ao receber a mensagem do tipo *deck*, após todas as validações, encripta o *deck* recebido com a sua chave simétrica e no final dá *shuffle* do mesmo. Para concluir, envia uma mensagem do tipo *deck* para a *Playing Area* onde passa o seu *seq* e o *deck* processado. Esta por sua vez, redireciona a mensagem para o próximo *Player* que deu *join* e para o *Caller*.
+   
+4. Visto que o *Caller* também recebe os *decks* processados pelos *Players*, quando os receber todos, este envia o último recebido assinado através da mensagem do tipo *final_deck* para a *Playing Area*.  
+
+## Troca de chaves simétricas
+
+```mermaid
+sequenceDiagram
+    actor Caller
+    participant PlayingArea
+    actor Player1
+    actor Player2
+    Caller->>PlayingArea: key <br> [symmetric key]
+    Player1->>PlayingArea: key <br> [symmetric key]
+    Player2->>PlayingArea: key <br> [symmetric key]
+    PlayingArea-->>Caller: keys_response <br> [all symmetric keys] 
+    PlayingArea-->>Player1: keys_response <br> [all symmetric keys]
+    PlayingArea-->>Player2: keys_response <br> [all symmetric keys]
+```
+
+<br>
+
+```python
+- key
+    msg = {
+        data: {
+            "type": "key",
+            "seq": int,
+            "key": list         # [sym_key, iv] -> ambos codificados para Base64 
+        }
+        signature: str
+    }
+
+- keys_response
+    msg = {
+        data: {
+            "type": "keys_response",
+            "keys": list
+            # [[sym_key1, iv1], [sym_key2, iv2], ...] -> tudo codificado para Base64
+        }
+        signature: str          # Codificada para Base64
+    }
+```
+
+1. Como já supracitado, o *Caller* também recebe os *decks* processados pelos *Players*, quando os receber todos, este para além de enviar uma mensagem do tipo *final_deck* envia também uma mensagem do tipo *key* onde passa o seu *seq* e a chave simétrica utilizada na encriptação do *deck*.
+
+2. A *Playing Area* só após receber 
+
+## Determinação dos vencedores
+
+```mermaid
+sequenceDiagram
+    actor Caller
+    participant PlayingArea
+    actor Player1
+    actor Player2
+    Player1->>PlayingArea: winners
+    PlayingArea->>Caller: winners <br> (redirect)
+    Player2->>PlayingArea: winners
+    PlayingArea->>Caller: winners <br> (redirect)
+    Caller->>PlayingArea: final winners <br> [all winners]
+    PlayingArea->>Player1: final winners <br> (redirect)
+    PlayingArea->>Player2: final winners <br> (redirect)
+```
+
+<br>
+
+```python
+- winners
+    msg = {
+        data: {
+            "type": "winners",
+            "seq": int,
+            "winners": list     # [seq1, seq2, ...]
+        }
+        signature: str
+    }
+
+- final_winners
+    msg = {
+        data: {
+            "type": "final_winners",
+            "seq": int,
+            "winners": list     # [seq1, seq2, ...]
+        }
+        signature: str          # Codificada para Base64
+    }
+```
+
+# Batota
+TODO
 
 
 # Créditos

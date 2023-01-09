@@ -1,6 +1,7 @@
 from src.User import User, N, M
 from src.CryptoUtils import Ascrypt, Scrypt, BytesSerializer
 import random
+import sys
 
 class Caller(User):
     def __init__(self, nickname, parea_host, parea_port, pin):
@@ -11,6 +12,7 @@ class Caller(User):
 
         self.handlers = {
             "redirect": self.handle_redirect,
+            "disqualify": self.handle_disqualify,
             "logs_response": self.handle_logs_response,
             "join_response": self.handle_join_response,
             "ready_response": self.handle_ready_response,
@@ -20,7 +22,6 @@ class Caller(User):
             "winners": self.handle_winners
         }
 
-        self.deck = []
         self.num_players = 0
         self.winners_recv = 0
         self.decks_recv = 0
@@ -28,8 +29,25 @@ class Caller(User):
 
 
 
+    def handle_join_response(self, conn, data, signature):
+        if data["accepted"]:
+            print("Joined playing area")
+            self.seq = data["seq"]
+            self.proto.seq = self.seq
+            print("My seq:", self.seq)
+            self.options()
+        else:
+            print("Join request denied")
+            exit(0)
+
+
+
     def handle_ready_response(self, conn, data, signature):
         print("Received ready response")
+        if len(data["players"]) <= 1:
+            print("No players in playing area")
+            self.options()
+            return
         self.players_info = {str(p[0]): (p[1], p[2]) for p in data["players"]}
         self.num_players = len(self.players_info) - 1
         self.proto.start(self.sock, self.players_info)
@@ -88,9 +106,38 @@ class Caller(User):
             print("Winners: ", self.winners)
             self.proto.final_winners(self.sock, self.winners)
             print("Sent final winners")
-            exit(0)
+            self.options()
+
+
+    def options(self):
+        self.deck = []
+        self.num_players = 0
+        self.winners_recv = 0
+        self.decks_recv = 0
+        self.winners = []
+        self.cards = []
+        self.deck = []
+        self.players_info = {}
+        self.playing = False
+        print("Options:\n\
+            1 - Start game\n\
+            2 - Show logs\n\
+            3 - Exit"
+        )
+        print("Response: ", end="")
+        sys.stdout.flush()
 
 
     def handle_input(self, command):
-        self.proto.ready(self.sock)
-        print("Sent ready")
+        if self.playing:
+            return
+
+        if command == "1":
+            self.proto.ready(self.sock)
+            print("Sent ready")
+            self.playing = True
+        elif command == "2":
+            self.proto.get_logs(self.sock)
+            print("Sent logs request")
+        elif command == "3":
+            exit(0)
