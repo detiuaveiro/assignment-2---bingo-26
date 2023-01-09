@@ -4,7 +4,7 @@ import json
 import time
 import logging
 from src.BingoProtocol import BingoProtocol
-from src.CryptoUtils import Ascrypt, BytesSerializer
+from src.CryptoUtils import Ascrypt, BytesSerializer, Hashing
 from src.CitizenCard import CitizenCard
 
 
@@ -81,6 +81,8 @@ class PlayingArea:
         if data["client"] == "player":
             self.current_id += 1
             self.proto.join_response(conn, not self.playing, self.current_id, Ascrypt.serialize_key(self.public_key))
+            s = self.proto.join_response(None, not self.playing, self.current_id, Ascrypt.serialize_key(self.public_key))["signature"]
+            self.log_event("Join response sent", "pa", s)
             if not self.playing:
                 self.users[conn] = (self.current_id, data["nickname"], data["public_key"])
                 self.users_by_seq[self.current_id] = conn
@@ -92,6 +94,8 @@ class PlayingArea:
                 self.close_conn(conn)
         elif data["client"] == "caller":
             self.proto.join_response(conn, self.caller is None, 0, Ascrypt.serialize_key(self.public_key))
+            s = self.proto.join_response(None, self.caller is None, 0, Ascrypt.serialize_key(self.public_key))["signature"]
+
             if self.caller is None:
                 self.users[conn] = (0, data["nickname"], data["public_key"])
                 self.users_by_seq[0] = conn
@@ -109,14 +113,15 @@ class PlayingArea:
 
 
     def handle_ready(self, conn, data, signature):
-        self.logs = []
+        # self.logs = []
         print("Ready received")
         self.log_event("Ready received", data["seq"], signature)
         self.playing = True
         players = [tup for tup in self.users.values()]
         self.proto.ready_response(conn, players)
         print("Ready response sent")
-        self.log_event("Ready response sent", "pa")
+        s = self.proto.ready_response(None, players)["signature"]
+        self.log_event("Ready response sent", "pa", s)
         if len(players) <= 1:
             self.reset()
 
@@ -127,8 +132,9 @@ class PlayingArea:
         self.log_event("Start received", data["seq"], signature)
         for c in self.other_conns(conn):
             self.proto.redirect(c, data, signature)
+            s = self.proto.redirect(None, data, signature)["signature"]
+            self.log_event(f"Start sent to player {self.users[c][0]}", "pa", s)
         print("Start sent to other players")
-        self.log_event("Start sent to other players", "pa")
 
 
 
@@ -137,8 +143,10 @@ class PlayingArea:
         self.log_event("Card received", data["seq"], signature)
         for c in self.other_conns(conn):
             self.proto.redirect(c, data, signature)
+            s = self.proto.redirect(None, data, signature)["signature"]
+            self.log_event(f"Card sent to player {self.users[c][0]}", "pa", s)
+
         print("Card sent to other players")
-        self.log_event("Card sent to other players", "pa")
 
 
 
@@ -147,13 +155,15 @@ class PlayingArea:
         self.log_event("Deck received", data["seq"], signature)
         if self.total_shuffles != 0:
             self.proto.redirect(self.caller, data, signature)
+            s = self.proto.redirect(None, data, signature)["signature"]
             print("Deck sent to caller")
-            self.log_event("Deck sent to caller", "pa")
+            self.log_event("Deck sent to caller", "pa", s)
         if self.total_shuffles < len(self.users) - 1:
             self.proto.redirect(self.users_by_seq[self.total_shuffles + 1], data, signature)
+            s = self.proto.redirect(None, data, signature)["signature"]
             self.total_shuffles += 1
             print("Deck sent to next player")
-            self.log_event("Deck sent to next player", "pa")
+            self.log_event("Deck sent to next player", "pa", s)
 
     
 
@@ -162,8 +172,9 @@ class PlayingArea:
         self.log_event("Final deck received from", data["seq"], signature)
         for c in self.other_conns(conn):
             self.proto.redirect(c, data, signature)
+            s = self.proto.redirect(None, data, signature)["signature"]
+            self.log_event(f"Final deck sent to player {self.users[c][0]}", "pa", s)
         print("Final deck sent to other players")
-        self.log_event("Final deck sent to other players", "pa")
 
 
 
@@ -176,8 +187,9 @@ class PlayingArea:
             keys_lst.reverse()
             for c in self.users:
                 self.proto.keys_response(c, keys_lst)
+                s = self.proto.keys_response(None, keys_lst)["signature"]
+                self.log_event(f"Keys sent to player {self.users[c][0]}", "pa", s)
             print("Keys sent to all players")
-            self.log_event("Keys sent to all players", "pa")
 
 
     
@@ -185,8 +197,9 @@ class PlayingArea:
         print("Winners received from", data["seq"])
         self.log_event("Winner(s) received", data["seq"], signature)
         self.proto.redirect(self.caller, data, signature)
+        s = self.proto.redirect(None, data, signature)["signature"]
         print("Winners sent to caller")
-        self.log_event("Winners sent to caller", "pa")
+        self.log_event("Winners sent to caller", "pa", s)
 
 
     
@@ -195,8 +208,9 @@ class PlayingArea:
         self.log_event("Final winner(s) received", data["seq"], signature)
         for c in self.other_conns(conn):
             self.proto.redirect(c, data, signature)
+            s = self.proto.redirect(None, data, signature)["signature"]
+            self.log_event(f"Final winners sent to player {self.users[c][0]}", "pa", s)
         print("Final winners sent to other players")
-        self.log_event("Final winners sent to other players", "pa")
         self.reset()
         
         
@@ -314,8 +328,9 @@ class PlayingArea:
 
 
     def log_event(self, msg, seq, signature = "", level = "INFO"):
-        if seq is None: seq = " "
-        msg = f"{seq} {time.time()} {msg} {'todo hash'} {signature}"
+        if seq is None: seq = "PA"
+        hash_= None if len(self.logs) == 0 else Hashing.hash(self.logs[-1])
+        msg = f"{seq}, {time.time()}, {msg}, {hash_ }, {signature}"
         # if level == "ERROR":
         #     logging.error(msg)
         #     print(color.FAIL[0] + msg + color.ENDC[0])
@@ -326,6 +341,7 @@ class PlayingArea:
         #     logging.info(msg)
         #     print(color.ENDC[0] + msg + color.ENDC[0])
         self.logs.append(msg)
+        logging.info(msg)
 
 
 

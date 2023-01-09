@@ -2,14 +2,19 @@
 
 - [ ] logs e all_msgs
 
-cheating:
-- [ ]x invalid card (repeated numbers, invalid size)
-- [ ]x seq number diferente
-- [ ]x invalid signature
-- [ ]x enviar msg de outras entidades(player envia finnal winners)
-- [ ]x enviar varias msg(cards, decks, winners)
-- [ ]x player envia o primeiro deck
+player misbehave:
+- [~] invalid card (repeated numbers, invalid size)
+- [~] seq number diferente
+- [~] invalid signature
+- [~] enviar msg de outras entidades(player envia finnal winners)
+- [~] enviar varias msg(cards, decks, winners)
+- [~] player envia o primeiro deck
 - [ ] sym key invalida
+
+caller misbehave: (players wont detect)
+- [ ] change winner
+- [ ] disqualify without reason
+
 
 - [ ] limitar usos das keys
 - [ ] validar nacionalidade

@@ -1,5 +1,6 @@
 import os
 import base64
+import binascii
 
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives.padding import PKCS7
@@ -13,6 +14,13 @@ class BytesSerializer:
 
     def from_base64_str(string: str) -> bytes:
         return base64.b64decode(string.encode("utf-8"))
+
+class Hashing:
+    def hash(msg) -> str:
+        digest = hashes.Hash(hashes.SHA256())
+        digest.update(msg.encode("utf-8"))
+        digest = digest.finalize()
+        return binascii.hexlify(digest).decode("utf-8")
 
 
 class Scrypt:
@@ -105,8 +113,3 @@ class Ascrypt:
             return True
         except:
             return False
-
-    def msg_hash(self, msg):
-        digest = hashes.Hash(hashes.SHA256())
-        digest.update(msg)
-        return digest.finalize()

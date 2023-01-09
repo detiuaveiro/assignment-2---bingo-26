@@ -1,3 +1,9 @@
+## About
+
+(TODO)
+
+[Documentation/Report](#Documentation.md)
+
 ## How to run the project
 
 - Have python3 installed
