@@ -46,7 +46,7 @@ class Player(User):
             print("Joined playing area")
             self.seq = data["seq"]
             self.proto.seq = self.seq
-            print("My seq:", self.seq)
+            print("My sequence number:", self.seq)
         else:
             print("Join request denied")
             exit(0)

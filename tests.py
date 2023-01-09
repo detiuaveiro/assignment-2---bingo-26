@@ -2,10 +2,43 @@ from src.BingoProtocol import BingoProtocol
 from src.CryptoUtils import Scrypt, Ascrypt
 from src.CitizenCard import CitizenCard
 
-cc = CitizenCard("1111")
-msg = b'ola mundo'
-signature = cc.sign(msg)
-print(CitizenCard.verify(cc.export_cert_public_key(), msg, signature))
+import logging
+logging.basicConfig(
+    filename='playing_area.log',
+    encoding='utf-8',
+    format='%(asctime)s %(levelname)s %(message)s',
+    level=logging.INFO,
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+
+
+class color:
+    WARNING = ('\033[93m', logging.WARNING)
+    FAIL = ('\033[91m', logging.ERROR) 
+    ENDC = ('\033[92m', logging.INFO)
+
+def log(msg, level="INFO"):
+    if level == "ERROR":
+        logging.log(logging.ERROR, msg)
+        print(color.FAIL[0] + f"ERROR: {msg}" + color.ENDC[0])
+    elif level == "WARNING":
+        logging.warning(msg)
+        print(color.WARNING[0] + f"WARNING: {msg}" + color.ENDC[0])
+    else:
+        logging.info(msg)
+        print(color.ENDC[0] + f"INFO: {msg}" + color.ENDC[0])
+
+log("ola mundo", "ERROR")
+log("ola mundo", "WARNING")
+log("ola mundo", "INFO")
+
+
+# ------------------------------------------------------------------
+
+# cc = CitizenCard("1111")
+# msg = b'ola mundo'
+# signature = cc.sign(msg)
+# print(CitizenCard.verify(cc.export_cert_public_key(), msg, signature))
 
 # ------------------------------------------------------------------
 

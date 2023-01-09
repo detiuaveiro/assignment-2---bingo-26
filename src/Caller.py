@@ -1,4 +1,4 @@
-from src.User import User, N, M
+from src.User import User, N, M, BingoException
 from src.CryptoUtils import Ascrypt, Scrypt, BytesSerializer
 import random
 import sys
@@ -27,6 +27,10 @@ class Caller(User):
         self.decks_recv = 0
         self.winners = []
 
+        self.cards_by_seq = []
+        self.decks_by_seq = []
+        self.winners_by_seq = []
+
 
 
     def handle_join_response(self, conn, data, signature):
@@ -34,7 +38,7 @@ class Caller(User):
             print("Joined playing area")
             self.seq = data["seq"]
             self.proto.seq = self.seq
-            print("My seq:", self.seq)
+            print("My sequence number:", self.seq)
             self.options()
         else:
             print("Join request denied")
@@ -58,9 +62,7 @@ class Caller(User):
 
     def handle_card(self, conn, data, signature):
         print("Received card from player ", data["seq"])
-
-        # TODO verificar card (cheating)
-
+        self.verify_card(data["card"], data["seq"])
         self.cards.append((data["card"], data["seq"]))
         if len(self.cards) == self.num_players:
             self.deck = random.sample(range(0, M), M)
@@ -69,16 +71,40 @@ class Caller(User):
             self.proto.deck(self.sock, encrypted_deck)
 
 
+
+    def verify_card(self, card, seq):
+        if seq in self.cards_by_seq:
+            raise BingoException("Player already sent a card")
+        self.cards_by_seq.append(seq)
+        if len(set(card)) != N:
+            raise BingoException("Invalid card")
+        for i in card:
+            if i < 0 or i >= M:
+                raise BingoException("Invalid card number")
+
+
+
     def handle_deck(self, conn, data, signature):
         print("Received deck from player ", data["seq"])
+        self.verify_deck(self.deck, data["seq"])
         self.deck = data["deck"]
         self.decks_recv += 1
-
         if self.decks_recv == self.num_players:
             final_deck = data["deck"] 
             self.proto.final_deck(self.sock, final_deck)
             self.proto.key(self.sock, [BytesSerializer.to_base64_str(self.sym_key), BytesSerializer.to_base64_str(self.iv)])
             print("Sent final deck and key")
+
+
+
+    def verify_deck(self, deck, seq):
+        if self.deck is None:
+            raise BingoException("Player sent deck before caller")
+        if seq in self.decks_by_seq:
+            raise BingoException("Player already sent a deck")
+        self.decks_by_seq.append(seq)
+        if len(set(deck)) != M:
+            raise BingoException("Invalid deck")
 
 
 
@@ -100,13 +126,23 @@ class Caller(User):
 
     def handle_winners(self, conn, data, signature):
         print("Received winners from ", data["seq"])
-        # TODO verificar se está correto, senao banir
+        self.verify_winners(data["winners"], data["seq"])
         self.winners_recv += 1
         if self.winners_recv == self.num_players:
             print("Winners: ", self.winners)
             self.proto.final_winners(self.sock, self.winners)
             print("Sent final winners")
             self.options()
+
+
+
+    def verify_winners(self, winners, seq):
+        if seq in self.winners_by_seq:
+            raise BingoException("Player already sent winners")
+        self.winners_by_seq.append(seq)
+        if winners != self.winners:
+            raise BingoException("Invalid winners")
+
 
 
     def options(self):
@@ -119,6 +155,9 @@ class Caller(User):
         self.deck = []
         self.players_info = {}
         self.playing = False
+        self.cards_by_seq = []
+        self.decks_by_seq = []
+        self.winners_by_seq = []
         print("Options:\n\
             1 - Start game\n\
             2 - Show logs\n\

@@ -1,15 +1,22 @@
 import socket
 import selectors
-import logging
 import json
+import time
+import logging
 from src.BingoProtocol import BingoProtocol
 from src.CryptoUtils import Ascrypt, BytesSerializer
 from src.CitizenCard import CitizenCard
 
-logging.basicConfig(filename='playing_area.log', encoding='utf-8', level=logging.DEBUG, format='%(levelname)s: %(message)s')
 
 class BingoException(Exception):
     pass
+
+class color:
+    WARNING = ('\033[93m', logging.WARNING)
+    FAIL = ('\033[91m', logging.ERROR) 
+    ENDC = ('\033[0m', logging.INFO)
+
+logging.basicConfig(filename='playing_area.log', encoding='utf-8', level=logging.DEBUG, format='%(levelname)s: %(message)s')
 
 class PlayingArea:
     
@@ -31,7 +38,7 @@ class PlayingArea:
         self.total_shuffles = 0
         self.all_keys = {}
         self.playing = False          # blocks new players from joining
-        self.all_msgs = []
+        self.logs = []
 
         # asymmetric encryption
         self.private_key, self.public_key = Ascrypt.generate_key_pair()
@@ -65,7 +72,7 @@ class PlayingArea:
 
     def handle_get_logs(self, conn, data, signature):
         print("Logs requested")
-        self.proto.logs_response(conn, self.all_msgs)
+        self.proto.logs_response(conn, self.logs) # -------------------------------
         print("Logs sent")
 
 
@@ -78,8 +85,10 @@ class PlayingArea:
                 self.users[conn] = (self.current_id, data["nickname"], data["public_key"])
                 self.users_by_seq[self.current_id] = conn
                 print("Player joined playing area")
+                self.log_event("Player joined playing area", self.current_id, signature)
             else:
                 print("Join request denied")
+                self.log_event("Join request denied", None, signature)
                 self.close_conn(conn)
         elif data["client"] == "caller":
             self.proto.join_response(conn, self.caller is None, 0, Ascrypt.serialize_key(self.public_key))
@@ -88,8 +97,10 @@ class PlayingArea:
                 self.users_by_seq[0] = conn
                 self.caller = conn
                 print("Caller joined playing area")
+                self.log_event("Caller joined playing area", 0, signature)
             else:
                 print("Join request denied, caller already exists")
+                self.log_event("Join request denied, caller already exists", None, signature)
                 self.close_conn(conn)
         else:
             print("Join request denied, unknown client")
@@ -98,12 +109,14 @@ class PlayingArea:
 
 
     def handle_ready(self, conn, data, signature):
-        self.all_msgs = []
+        self.logs = []
         print("Ready received")
+        self.log_event("Ready received", data["seq"], signature)
         self.playing = True
         players = [tup for tup in self.users.values()]
         self.proto.ready_response(conn, players)
         print("Ready response sent")
+        self.log_event("Ready response sent", "pa")
         if len(players) <= 1:
             self.reset()
 
@@ -111,42 +124,52 @@ class PlayingArea:
 
     def handle_start(self, conn, data, signature):
         print("Start received")
+        self.log_event("Start received", data["seq"], signature)
         for c in self.other_conns(conn):
             self.proto.redirect(c, data, signature)
         print("Start sent to other players")
+        self.log_event("Start sent to other players", "pa")
 
 
 
     def handle_card(self, conn, data, signature):
         print("Card received from", data["seq"])
+        self.log_event("Card received", data["seq"], signature)
         for c in self.other_conns(conn):
             self.proto.redirect(c, data, signature)
         print("Card sent to other players")
+        self.log_event("Card sent to other players", "pa")
 
 
 
     def handle_deck(self, conn, data, signature):
         print("Deck received from", data["seq"])
+        self.log_event("Deck received", data["seq"], signature)
         if self.total_shuffles != 0:
             self.proto.redirect(self.caller, data, signature)
             print("Deck sent to caller")
+            self.log_event("Deck sent to caller", "pa")
         if self.total_shuffles < len(self.users) - 1:
             self.proto.redirect(self.users_by_seq[self.total_shuffles + 1], data, signature)
             self.total_shuffles += 1
             print("Deck sent to next player")
+            self.log_event("Deck sent to next player", "pa")
 
     
 
     def handle_final_deck(self, conn, data, signature):
         print("Final deck received from", data["seq"])
+        self.log_event("Final deck received from", data["seq"], signature)
         for c in self.other_conns(conn):
             self.proto.redirect(c, data, signature)
         print("Final deck sent to other players")
+        self.log_event("Final deck sent to other players", "pa")
 
 
 
     def handle_key(self, conn, data, signature):
         print("Key received from", data["seq"])
+        self.log_event("Key received", data["seq"], signature)
         self.all_keys[data["seq"]] = data["key"]
         if len(self.all_keys) == len(self.users):
             keys_lst = [self.all_keys[i] for i in range(self.current_id+1) if i in self.all_keys]
@@ -154,21 +177,26 @@ class PlayingArea:
             for c in self.users:
                 self.proto.keys_response(c, keys_lst)
             print("Keys sent to all players")
+            self.log_event("Keys sent to all players", "pa")
 
 
     
     def handle_winners(self, conn, data, signature):
         print("Winners received from", data["seq"])
+        self.log_event("Winner(s) received", data["seq"], signature)
         self.proto.redirect(self.caller, data, signature)
         print("Winners sent to caller")
+        self.log_event("Winners sent to caller", "pa")
 
 
     
     def handle_final_winners(self, conn, data, signature):
         print("Final winners received from", data["seq"])
+        self.log_event("Final winner(s) received", data["seq"], signature)
         for c in self.other_conns(conn):
             self.proto.redirect(c, data, signature)
         print("Final winners sent to other players")
+        self.log_event("Final winners sent to other players", "pa")
         self.reset()
         
         
@@ -282,6 +310,22 @@ class PlayingArea:
         for c in self.users:
             if c != conn:
                 yield c
+
+
+
+    def log_event(self, msg, seq, signature = "", level = "INFO"):
+        if seq is None: seq = " "
+        msg = f"{seq} {time.time()} {msg} {'todo hash'} {signature}"
+        if level == "ERROR":
+            logging.error(msg)
+            print(color.FAIL[0] + msg + color.ENDC[0])
+        elif level == "WARNING":
+            logging.warning(msg)
+            print(color.WARNING[0] + msg + color.ENDC[0])
+        else:
+            logging.info(msg)
+            print(color.ENDC[0] + msg + color.ENDC[0])
+        self.logs.append(msg)
 
 
 

@@ -16,4 +16,5 @@ function main()
     exit 0
 }
 
+source venv/bin/activate
 main "$@" >/dev/null 2>&1
