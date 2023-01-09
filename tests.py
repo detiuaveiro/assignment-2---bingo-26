@@ -1,16 +1,20 @@
 from src.BingoProtocol import BingoProtocol
 from src.CryptoUtils import Scrypt, Ascrypt, BytesSerializer
 from src.CitizenCard import CitizenCard
-from dotenv import load_dotenv
-import os
+# from dotenv import load_dotenv
+# import os
 
-load_dotenv()
-x = os.getenv("USE_CARD")
-print(bool(int(x)))
+# load_dotenv()
+# x = os.getenv("USE_CARD")
+# print(bool(int(x)))
 
-# _, other_pub_key = Ascrypt.generate_key_pair()
-# msg = Ascrypt.serialize_key(other_pub_key).encode("utf-8")
-# priv_key, pub_key = Ascrypt.generate_key_pair(3840)
+cc = CitizenCard("9792")
+cert = cc.export_cert()
+
+_, other_pub_key = Ascrypt.generate_key_pair()
+msg = cert.encode("utf-8")
+print(len(msg))
+# priv_key, pub_key = Ascrypt.generate_key_pair(8192)
 # enc_msg = Ascrypt.encrypt_to_str(pub_key, msg)
 # dec_msg = Ascrypt.decrypt_from_str(priv_key, enc_msg)
 # print(msg == dec_msg)

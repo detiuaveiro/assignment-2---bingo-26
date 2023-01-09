@@ -96,7 +96,6 @@ class PlayingArea:
     def handle_join(self, conn, data, signature):
         try:
             data["public_key"] = Ascrypt.decrypt_from_str(self.private_key, data["public_key"]).decode("utf-8")
-            data["cc_certificate"] = Ascrypt.decrypt_from_str(self.private_key, data["cc_certificate"]).decode("utf-8")
         except:
             raise BingoException("Could not decrypt User's public key and citizen card certificate")
 

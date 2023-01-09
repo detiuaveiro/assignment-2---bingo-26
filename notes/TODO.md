@@ -20,4 +20,7 @@ caller misbehave: (players wont detect)
 
 - [X] limitar usos das keys (so fiz pros players)
 
+- [] tirar print "Game ended" no primeiro jogo
+- [] novo prompt quando input é errado (por exemplo, 0)
+
 - [ ] SSL

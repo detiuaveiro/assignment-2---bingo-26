@@ -21,12 +21,11 @@ def msg_sender(func):
             "signature": BytesSerializer.to_base64_str(signature)
         }
         if res["type"] == "join":
+            parea_pub_key = args[-1]
+            msg["data"]["public_key"] = Ascrypt.encrypt_to_str(parea_pub_key, msg["data"]["public_key"].encode("utf-8"))
             if USE_CARD:
                 cc_signature = args[2].sign(json.dumps(res).encode("utf-8"))
                 msg["cc_signature"] = BytesSerializer.to_base64_str(cc_signature)
-            parea_pub_key = args[-1]
-            msg["data"]["public_key"] = Ascrypt.encrypt_to_str(parea_pub_key, msg["data"]["public_key"].encode("utf-8"))
-            msg["data"]["cc_certificate"] = Ascrypt.encrypt_to_str(parea_pub_key, msg["data"]["cc_certificate"].encode("utf-8"))
         msg_bytes = json.dumps(msg).encode("utf-8")
         if args[1] is not None:
             args[0].send(args[1], msg_bytes)
