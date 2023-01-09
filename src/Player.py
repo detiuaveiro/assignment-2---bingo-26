@@ -12,8 +12,8 @@ class C:
     RESET = '\033[0m'      # reset
 
 class Player(User):
-    def __init__(self, nickname, parea_host, parea_port, pin):
-        super().__init__(nickname, parea_host, parea_port, pin)
+    def __init__(self, nickname, parea_host, parea_port, pin, slot):
+        super().__init__(nickname, parea_host, parea_port, pin, slot)
 
         # Join playing area as player
         self.proto.join(self.sock, self.cc, "player", nickname, Ascrypt.serialize_key(self.pub_key))
@@ -34,12 +34,12 @@ class Player(User):
         self.card = None
 
     
-        self.mb_card = False
-        self.mb_wrong_seq = False
-        self.mb_invalid_sig = False
+        self.mb_card = False                # send wrong card format (invalid size, invalid numbers, repeated numbers)
+        self.mb_wrong_seq = False           # send wrong seq inside the msg
+        self.mb_invalid_sig = False         # send message with wrong signature 
         self.mb_send_final_winners = False  # any type without permission
-        self.mb_send_2_cards = False        # cards, decks, winners
-        self.mb_wrong_winners = False
+        self.mb_send_2_cards = False        # send more than 1 card, deck, winners
+        self.mb_wrong_winners = False       # send my seq as winner
 
         if random.random() < MISBEHAVE_PROBABILITY:
             num = random.randint(0, 5)

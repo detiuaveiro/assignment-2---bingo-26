@@ -6,10 +6,10 @@ from cryptography.hazmat.primitives.asymmetric.padding import PKCS1v15
 from cryptography.hazmat.primitives.hashes import SHA1, Hash
 
 class CitizenCard:
-    def __init__(self, pin, lib='/usr/lib/x86_64-linux-gnu/pkcs11/opensc-pkcs11.so'):
+    def __init__(self, pin, slot=0, lib='/usr/lib/x86_64-linux-gnu/pkcs11/opensc-pkcs11.so'):
         pkcs11 = PyKCS11.PyKCS11Lib()
         pkcs11.load(lib)
-        slot = pkcs11.getSlotList(tokenPresent=True)[0]
+        slot = pkcs11.getSlotList(tokenPresent=True)[slot]
         assert "Auth" in pkcs11.getTokenInfo(slot).label
         self.session = pkcs11.openSession(slot)
         self.session.login(pin)

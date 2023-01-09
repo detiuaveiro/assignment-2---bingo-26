@@ -3,7 +3,7 @@ from src.CryptoUtils import Ascrypt, Scrypt, BytesSerializer
 import random
 import sys
 
-MISBEHAVE_PROBABILITY = 0.5
+MISBEHAVE_PROBABILITY = 0.3
 
 class C:
     RED = '\033[91m'       # error
@@ -20,8 +20,8 @@ def check_playing(func):
 
 
 class Caller(User):
-    def __init__(self, nickname, parea_host, parea_port, pin):
-        super().__init__(nickname, parea_host, parea_port, pin)
+    def __init__(self, nickname, parea_host, parea_port, pin, slot):
+        super().__init__(nickname, parea_host, parea_port, pin, slot)
 
         # Join playing area as caller
         self.proto.join(self.sock, self.cc, "caller", nickname, Ascrypt.serialize_key(self.pub_key))
@@ -47,8 +47,8 @@ class Caller(User):
         self.decks_by_seq = []
         self.winners_by_seq = []
 
-        self.mb_wrong_winner = False
-        self.mb_wrong_disqualify = False
+        self.mb_wrong_winner = False        # send seq = 1 as winner
+        self.mb_wrong_disqualify = False    # disqualify seq = 1 without him misbehave
 
         if random.random() < MISBEHAVE_PROBABILITY:
             num = random.randint(0, 1)

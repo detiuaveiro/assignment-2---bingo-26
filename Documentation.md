@@ -37,7 +37,7 @@
 
 
 ## Requisitos cumpridos
-TODO
+TODO--------------------------------------------------------
 
 <br>
 
@@ -328,7 +328,47 @@ sequenceDiagram
 
 <br>
 
-# *Cheaters*
+<br>
+
+## Segurança na autenticação
+TODO - rafa -----------------------------------------------------
+
+<br>
+
+## Assinatura das mensagens trocadas
+
+- Tanto a *Playing Area*, como o *Caller* e todos os *Players* possuem uma chave privada e uma chave pública. A chave privada é utilizada para assinar todas as mensagens a serem enviadas e redirecionadas (no caso da *Playing Area*). A chave pública é utilizada pelas restantes entidades do jogo no processo de verificação das mensagens recebidas. O tamanho da chave pública é de 2048 bits.
+
+- O algoritmo utilizado neste processo foi o algoritmo RSA, juntamente com padding *PSS* e a função de síntese *SHA256*.
+
+- Todas as mensagens trocadas entre as diferentes entidades, sempre que recebidas, são sempre sujeitas a um pro
+
+
+<br>
+
+## *Cheaters*
+
+Um dos requisitos exigidos para este projeto era dar a possibilidade ao *Caller* e aos *Players* a possibilidade de cometer *cheating*, ocorrendo este com uma certa probabilidade. Assim, foi necessário o desenvolvimento de mecanismos de verificação e deteção de mensagens e conteúdos inválidos de modo que o seu emissor seja banido do jogo.
+
+No jogo, o *cheating* pode ser feito de diferentes formas possíveis, nomeadamente:
+
+**(Player)**
+- envio de um card inválido, por exemplo com valores repetidos ou tamanho incorreto.
+- envio de mais do que um *card*.
+- envio de uma mensagem onde o *seq* não não corresponde ao atribuído pela *Playing Area*.
+- envio de uma mensagem com uma assinatura inválida.
+- envio dos *final winners* (operação apenas permitida pelo *Caller*).
+- envio de *winners* incorretos.
+
+**(Caller)**
+- envio dos *final winners* incorretos.
+- desqualificação de um *Player* que não cometeu *cheating*.
+
+
+<br>
+ 
+
+Perante uma situação de *cheating* cometido por um *Player*, a seguinte sequência de eventos ocorre:
 
 ```mermaid
 sequenceDiagram
@@ -336,31 +376,29 @@ sequenceDiagram
     participant PlayingArea
     actor Cheater
     actor PlayerX
-    Cheater->>PlayingArea: card <br> [invalid card]
-    PlayingArea->>Caller: card <br> [redirect invalid card] ?????????????
-
-
+    Cheater->>PlayingArea: Invalid message
+    PlayingArea->>Caller: Invalid message <br> (redirect)
+    Caller->>PlayingArea: Disqualify
+    PlayingArea->>Cheater: Disqualify (redirect)
+    Cheater->>Cheater: Exit
 ```
 
 <br>
 
-# Segurança na autenticação
-TODO - rafa
+No caso de um *Player* enviar uma mensagem que não pertence à sua entidade, as medidas adotas serão da responsabilidade da *Playing Area*, assim como mostra o diagrama de sequência abaixo.
+
+```mermaid
+sequenceDiagram
+    actor Caller
+    participant PlayingArea
+    actor Cheater
+    actor PlayerX
+    Cheater->>PlayingArea: Invalid message
+    PlayingArea->>Cheater: Disqualify (redirect)
+    Cheater->>Cheater: Exit
+```
 
 <br>
-
-# Segurança nas mensagens e seu conteúdo
-
-### Assinatura
-
-- Tanto a *Playing Area*, como o *Caller* e todos os *Players* possuem uma chave privada e uma chave pública. A chave privada é utilizada para assinar todas as mensagens a serem enviadas e redirecionadas (no caso da *Playing Area*). A chave pública é utilizada pelas restantes entidades do jogo no processo de verificação das mensagens recebidas.
-
-- O tamanho da chave pública é de 2048 bits.
-
-- O algoritmo utilizado neste processo foi o algoritmo RSA, juntamente com o padding *PSS* e a função de síntese *SHA256*.
-
-### Outras verificações implementadas
-TODO
 
 <br>
 

@@ -68,7 +68,7 @@ class BingoProtocol:
             "client": client,
             "nickname": nickname,
             "public_key": public_key,
-            "cc_certificate": "CC_CERT" #CARDcc.export_cert()
+            "cc_certificate": "xpto" #CARDcc.export_cert()
         }
 
 

@@ -10,26 +10,28 @@ from cryptography.hazmat.backends import default_backend as db
 
 # Player.py
 cc = CitizenCard("1111")
-cert_obj = cc.session.findObjects([
-                    (PyKCS11.CKA_CLASS, PyKCS11.CKO_CERTIFICATE),
-                    (PyKCS11.CKA_LABEL, 'CITIZEN AUTHENTICATION CERTIFICATE')
-                    ])[0]
-cert_der_data = cert_obj.to_dict()['CKA_VALUE']
-obj_to_send = json.dumps(cert_der_data).encode("utf-8")
-msg = b'ola mundo'
-signature = cc.sign(msg)
 
-# PlayingArea.py
-recv = obj_to_send
-cert_der_data = bytes(json.loads(recv.decode("utf-8")))
-cert = x509.load_der_x509_certificate(cert_der_data, db())
-pub_key = cert.public_key()
-print(CitizenCard.verify(pub_key, msg, signature))
-for attr in cert.subject.rfc4514_string().split(","):
-    if attr.startswith("C="):
-        country = attr.split("=")[1]
-        print(country)
-        assert country == "PT"
+
+# cert_obj = cc.session.findObjects([
+#                     (PyKCS11.CKA_CLASS, PyKCS11.CKO_CERTIFICATE),
+#                     (PyKCS11.CKA_LABEL, 'CITIZEN AUTHENTICATION CERTIFICATE')
+#                     ])[0]
+# cert_der_data = cert_obj.to_dict()['CKA_VALUE']
+# obj_to_send = json.dumps(cert_der_data).encode("utf-8")
+# msg = b'ola mundo'
+# signature = cc.sign(msg)
+
+# # PlayingArea.py
+# recv = obj_to_send
+# cert_der_data = bytes(json.loads(recv.decode("utf-8")))
+# cert = x509.load_der_x509_certificate(cert_der_data, db())
+# pub_key = cert.public_key()
+# print(CitizenCard.verify(pub_key, msg, signature))
+# for attr in cert.subject.rfc4514_string().split(","):
+#     if attr.startswith("C="):
+#         country = attr.split("=")[1]
+#         print(country)
+#         assert country == "PT"
 
 
 # ------------------------------------------------------------------

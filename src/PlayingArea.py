@@ -245,7 +245,9 @@ class PlayingArea:
             try:
                 self.verify_seq(conn, data)
                 self.verify_type(conn, data)
-                # self.verify_signature(conn, data)   
+
+                #CARDif data["data"]["type"] == "join":
+                #CARD   self.verify_cc_signature(data)
 
                 self.handlers[data["data"]["type"]](conn, data["data"], data["signature"])
             except Exception as e:
@@ -295,25 +297,17 @@ class PlayingArea:
 
 
 
-    def verify_signature(self, conn, data) -> bool:
+    def verify_cc_signature(self, data):
         content = json.dumps(data["data"]).encode("utf-8")
-        signature = BytesSerializer.from_base64_str(data["signature"])
-        if conn in self.users and not Ascrypt.verify(Ascrypt.deserialize_key(self.users[conn][2]), content, signature):
-            print("\033[91mInvalid signature\033[0m")
-            raise BingoException("Invalid signature")
-        elif data["data"]["type"] == "join":
-            if not Ascrypt.verify(Ascrypt.deserialize_key(data["data"]["public_key"]), content, signature):
-                print("\033[91mInvalid signature\033[0m")
-                raise BingoException("Invalid signature")
-            #CARDcc_signature = BytesSerializer.from_base64_str(data["cc_signature"])
-            #CARDcert_obj = data["data"]["cc_certificate"]
-            #CARDcc_public_key = CitizenCard.get_pub_key_from_cert(cert_obj)
-            #CARDif not CitizenCard.check_nationality(cert_obj, "PT"):
-            #CARD   print("\033[91mNot a Portuguese Citizen Card\033[0m")
-            #CARD   raise BingoException("Not a Portuguese Citizen Card")
-            #CARDif not CitizenCard.verify(cc_public_key, content, cc_signature):
-            #CARD   print("\033[91mInvalid Citizen Card signature\033[0m")
-            #CARD   raise BingoException("Invalid Citizen Card signature")
+        cc_signature = BytesSerializer.from_base64_str(data["cc_signature"])
+        cert_obj = data["data"]["cc_certificate"]
+        cc_public_key = CitizenCard.get_pub_key_from_cert(cert_obj)
+        if not CitizenCard.check_nationality(cert_obj, "PT"):
+            print("\033[91mNot a Portuguese Citizen Card\033[0m")
+            raise BingoException("Not a Portuguese Citizen Card")
+        if not CitizenCard.verify(cc_public_key, content, cc_signature):
+            print("\033[91mInvalid Citizen Card signature\033[0m")
+            raise BingoException("Invalid Citizen Card signature")
 
 
 

@@ -22,7 +22,7 @@ class C:
     RESET = '\033[0m'      # reset
 
 class User:
-    def __init__(self, nickname, parea_host, parea_port, pin):
+    def __init__(self, nickname, parea_host, parea_port, pin, slot):
         self.nickname = nickname
         self.pin = pin
         self.seq = None
@@ -52,7 +52,7 @@ class User:
         self.proto = BingoProtocol(self.priv_key)
         
         # cc
-        self.cc = None #CARDCitizenCard(pin)
+        self.cc = None #CARDCitizenCard(pin, slot)
 
         ## non-blocking input
         orig_fl = fcntl.fcntl(sys.stdin, fcntl.F_GETFL)
