@@ -2,6 +2,11 @@ import json
 import socket
 from src.CryptoUtils import Ascrypt, BytesSerializer
 from src.CitizenCard import CitizenCard
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+USE_CARD = bool(int(os.getenv("USE_CARD")))
 
 def msg_sender(func):
     """
@@ -16,8 +21,9 @@ def msg_sender(func):
             "signature": BytesSerializer.to_base64_str(signature)
         }
         if res["type"] == "join":
-        #CARD   cc_signature = args[2].sign(json.dumps(res).encode("utf-8"))
-        #CARD   msg["cc_signature"] = BytesSerializer.to_base64_str(cc_signature)
+            if USE_CARD:
+                cc_signature = args[2].sign(json.dumps(res).encode("utf-8"))
+                msg["cc_signature"] = BytesSerializer.to_base64_str(cc_signature)
             parea_pub_key = args[-1]
             msg["data"]["public_key"] = Ascrypt.encrypt_to_str(parea_pub_key, msg["data"]["public_key"].encode("utf-8"))
             msg["data"]["cc_certificate"] = Ascrypt.encrypt_to_str(parea_pub_key, msg["data"]["cc_certificate"].encode("utf-8"))
@@ -84,7 +90,7 @@ class BingoProtocol:
             "client": client,
             "nickname": nickname,
             "public_key": public_key,
-            "cc_certificate": "xpto" #CARDcc.export_cert()
+            "cc_certificate": "CC_CERTIFICATE" if not USE_CARD else cc.export_cert()
         }
 
 

@@ -2,8 +2,12 @@ from src.User import User, N, M, BingoException
 from src.CryptoUtils import Ascrypt, Scrypt, BytesSerializer
 import random
 import sys
+import os
+from dotenv import load_dotenv
 
-MISBEHAVE_PROBABILITY = 0.3
+load_dotenv()
+MISBEHAVE_PROBABILITY = float(os.getenv("MISBEHAVE_PROBABILITY")) + 0.1
+
 
 class C:
     RED = '\033[91m'       # error

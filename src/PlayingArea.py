@@ -6,7 +6,11 @@ import logging
 from src.BingoProtocol import BingoProtocol
 from src.CryptoUtils import Ascrypt, BytesSerializer, Hashing
 from src.CitizenCard import CitizenCard
+from dotenv import load_dotenv
+import os
 
+load_dotenv()
+USE_CARD = bool(int(os.getenv("USE_CARD")))
 
 class BingoException(Exception):
     pass
@@ -260,8 +264,8 @@ class PlayingArea:
                 self.verify_seq(conn, data)
                 self.verify_type(conn, data)
 
-                #CARDif data["data"]["type"] == "join":
-                #CARD   self.verify_cc_signature(data)
+                if USE_CARD and data["data"]["type"] == "join":
+                    self.verify_cc_signature(data)
 
                 self.handlers[data["data"]["type"]](conn, data["data"], data["signature"])
             except Exception as e:

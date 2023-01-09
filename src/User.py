@@ -4,13 +4,16 @@ from src.BingoProtocol import BingoProtocol
 from src.CitizenCard import CitizenCard
 from src.CryptoUtils import Ascrypt, Scrypt, BytesSerializer
 import json
+from dotenv import load_dotenv
 
 import sys      # for non-blocking input
 import fcntl    # for non-blocking input
 import os       # for non-blocking input
 
-M = 100
+load_dotenv()
+M = int(os.getenv("M"))
 N = M//4
+USE_CARD = bool(int(os.getenv("USE_CARD")))
 
 class BingoException(Exception):
     pass
@@ -53,7 +56,9 @@ class User:
         self.proto = BingoProtocol(self.priv_key)
         
         # cc
-        self.cc = None #CARDCitizenCard(pin, slot)
+        self.cc = None
+        if USE_CARD:
+            self.cc = CitizenCard(pin, slot)
 
         ## non-blocking input
         orig_fl = fcntl.fcntl(sys.stdin, fcntl.F_GETFL)

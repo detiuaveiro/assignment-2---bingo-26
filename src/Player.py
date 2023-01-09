@@ -2,8 +2,11 @@ from src.User import User, M, N
 from src.CryptoUtils import Scrypt, Ascrypt, BytesSerializer
 import random
 import sys
+from dotenv import load_dotenv
+import os
 
-MISBEHAVE_PROBABILITY = 0.2
+load_dotenv()
+MISBEHAVE_PROBABILITY = float(os.getenv("MISBEHAVE_PROBABILITY"))
 
 class C:
     RED = '\033[91m'       # error
