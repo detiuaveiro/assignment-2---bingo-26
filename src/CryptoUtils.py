@@ -105,3 +105,8 @@ class Ascrypt:
             return True
         except:
             return False
+
+    def msg_hash(self, msg):
+        digest = hashes.Hash(hashes.SHA256())
+        digest.update(msg)
+        return digest.finalize()

@@ -72,7 +72,7 @@ class PlayingArea:
 
     def handle_get_logs(self, conn, data, signature):
         print("Logs requested")
-        self.proto.logs_response(conn, self.logs) # -------------------------------
+        self.proto.logs_response(conn, self.logs)
         print("Logs sent")
 
 
@@ -316,15 +316,15 @@ class PlayingArea:
     def log_event(self, msg, seq, signature = "", level = "INFO"):
         if seq is None: seq = " "
         msg = f"{seq} {time.time()} {msg} {'todo hash'} {signature}"
-        if level == "ERROR":
-            logging.error(msg)
-            print(color.FAIL[0] + msg + color.ENDC[0])
-        elif level == "WARNING":
-            logging.warning(msg)
-            print(color.WARNING[0] + msg + color.ENDC[0])
-        else:
-            logging.info(msg)
-            print(color.ENDC[0] + msg + color.ENDC[0])
+        # if level == "ERROR":
+        #     logging.error(msg)
+        #     print(color.FAIL[0] + msg + color.ENDC[0])
+        # elif level == "WARNING":
+        #     logging.warning(msg)
+        #     print(color.WARNING[0] + msg + color.ENDC[0])
+        # else:
+        #     logging.info(msg)
+        #     print(color.ENDC[0] + msg + color.ENDC[0])
         self.logs.append(msg)
 
 

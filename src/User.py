@@ -116,8 +116,11 @@ class User:
 
 
     def handle_logs_response(self, conn, data, signature):
-        print("Logs received")
-        print(data["logs"])
+        print("Logs received\n")
+        for log in data["logs"]:
+            print(log)
+        print()
+
         self.options()
     
 
