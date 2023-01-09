@@ -19,12 +19,14 @@
 ```
 
 ## Requisitos cumpridos
+TODO
 
+<br>
 
 ## Comunicação entre os módulos
 ![](img_link)
 
-## Novo jogo
+## 1. Novo jogo
 ```mermaid
 sequenceDiagram
     actor Caller
@@ -107,7 +109,7 @@ sequenceDiagram
 
 <br>
 
-## Troca de *cards*
+## 2. Troca de *cards*
 ```mermaid
 sequenceDiagram
     actor Caller
@@ -153,8 +155,9 @@ sequenceDiagram
 1. Cada *Player* após receber a mensagem de confirmação do início do jogo, gera uma chave simétrica, um IV e ainda o card a ser utilizado no jogo. Por fim, o *Player* envia uma mensagem do tipo *card* para a *Playing Area* onde passa o seu *seq*, o card gerado e a assinatura do conteúdo.
 2. A *Playing Area* ao receber a mensagem, verifica a assinatura e redireciona a mensagem para o *Caller* e para os *Players* adversários, de modo a que possam futuramente calcular o(s) winner(s).
 
+<br>
 
-## Geração e encriptação do *deck*
+## 3. Geração e encriptação do *deck*
 ```mermaid
 sequenceDiagram
     actor Caller
@@ -194,9 +197,13 @@ sequenceDiagram
    
 3. Um *Player* ao receber a mensagem do tipo *deck*, após todas as validações, encripta o *deck* recebido com a sua chave simétrica e no final dá *shuffle* do mesmo. Para concluir, envia uma mensagem do tipo *deck* para a *Playing Area* onde passa o seu *seq* e o *deck* processado. Esta por sua vez, redireciona a mensagem para o próximo *Player* que deu *join* e para o *Caller*.
    
-4. Visto que o *Caller* também recebe os *decks* processados pelos *Players*, quando os receber todos, este envia o último recebido assinado através da mensagem do tipo *final_deck* para a *Playing Area*.  
+4. Visto que o *Caller* também recebe os *decks* processados pelos *Players*, quando os receber todos, este envia o último recebido assinado através da mensagem do tipo *final_deck* para a *Playing Area*.
 
-## Troca de chaves simétricas
+5. A *Playing Area* ao receber a mensagem do tipo *final_deck*, verifica a assinatura e redireciona a mensagem para todos os *Players* do jogo.
+
+<br>
+
+## 4. Troca de chaves simétricas
 
 ```mermaid
 sequenceDiagram
@@ -236,11 +243,15 @@ sequenceDiagram
     }
 ```
 
-1. Como já supracitado, o *Caller* também recebe os *decks* processados pelos *Players*, quando os receber todos, este para além de enviar uma mensagem do tipo *final_deck* envia também uma mensagem do tipo *key* onde passa o seu *seq* e a chave simétrica utilizada na encriptação do *deck*.
+1. Como já supracitado, o *Caller* também recebe os *decks* processados pelos *Players*. A partir do momento que os receber todos, este para além de enviar uma mensagem do tipo *final_deck* envia também uma mensagem do tipo *key* onde passa o seu *seq* e a chave simétrica utilizada na encriptação de cada elemento do *deck*.
 
-2. A *Playing Area* só após receber 
+2. À semelhança do *Caller*, os *Players* após receberam a mensagem de *final_deck*, enviam uma mensagem do tipo *key* para a *Playing Area* onde passam o seu *seq* e a sua chave simétrica.
 
-## Determinação dos vencedores
+3. Após a *Playing Area* receber as chaves simétricas de todos os *Users*, esta envia uma mensagem do tipo *keys_response* para todos os utilizadores. A ordem das chaves simétricas é contrária à ordem de encriptação dos *decks*.
+
+<br>
+
+## 5. Determinação dos vencedores
 
 ```mermaid
 sequenceDiagram
@@ -280,6 +291,16 @@ sequenceDiagram
         signature: str          # Codificada para Base64
     }
 ```
+
+1. Após os *Players* receberem a mensagem com a lista de chaves simétricas utilizadas na encriptação do deck, cada um deles desencripta o seu *deck* (igual para todos os players e caller) e determina o(s) winner(s) do jogo. De seguida, cada *Player* envia uma mensagem do tipo *winners* para a *Playing Area* onde passa o seu *seq* e a lista de vencedores que calculou.
+
+2. A *Playing Area* ao receber, procede à verificação da assinatura e redireciona a mensagem para o *Caller*.
+
+3. O *Caller* quando receber a mensagem do tipo *winners* vinda de todos os *Players* compara os winners recebidos com os que ele próprio determinou. Caso sejam iguais, envia uma mensagem do tipo *final_winners* para a *Playing Area* onde passa o seu *seq* e a lista de vencedores final, naturalmente com o conteúdo assinado.
+
+4. Por fim, a *Playing Area* ao receber a mensagem do tipo *final_winners* procede à verificação da assinatura e redireciona a mensagem para todos os *Players*, terminando assim uma ronda do jogo.
+
+<br>
 
 # Batota
 TODO
