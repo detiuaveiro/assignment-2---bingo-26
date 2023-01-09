@@ -29,10 +29,10 @@
 | `PlayingArea.py` | Implementação da *Playing Area* |
 | `run.sh` | Script para execução da *Playing Area*, *Caller* e 3 *Players* |
 | `User.py` | Implementação da classe base *User* |
-| `caller.py` | Source code para criação de um *Caller* |
-| `player.py` | Source code para criação de um *Players* |
-| `playing_area.py` | Source code para criação da *Playing Area* |
-| `requirements.txt` | Requisitos python para execução do projeto |
+| `caller.py` | *Parse* de argumentos e criação de um *Caller* |
+| `player.py` | *Parse* de argumentos e criação de um  *Player* |
+| `playing_area.py` | *Parse* de argumentos e criação da *Playing Area* |
+| `requirements.txt` | Módulos Python necessários à execução do projeto |
 
 
 
@@ -341,7 +341,7 @@ TODO - rafa -----------------------------------------------------
 
 - O algoritmo utilizado neste processo foi o algoritmo RSA, juntamente com padding *PSS* e a função de síntese *SHA256*.
 
-- Todas as mensagens trocadas entre as diferentes entidades, sempre que recebidas, são sempre sujeitas a um pro
+- Todas as mensagens trocadas entre as diferentes entidades são, sempre que recebidas, sujeitas a um processo de verificação da assinatura do emissor e um conjunto de mecanismos de verificação da existência de *cheating*, abordados no ponto seguinte.
 
 
 <br>

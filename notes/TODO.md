@@ -1,6 +1,11 @@
 ## TODO
 
-- [] logs dos cheats
+- [ ] logs dos cheats e do get pub key/response
+
+- [ ] mudar documentaçao para usar o novo protocolo
+
+- [ ] encryptar join
+- [ ] desencryptar handle join
 
 player misbehave:
 - [X] invalid card (repeated numbers, invalid size, invalid numbers)
@@ -11,11 +16,9 @@ player misbehave:
 - [ ] sym key invalida
 
 caller misbehave: (players wont detect)
-- [ ] change winner
-- [ ] disqualify without reason
+- [X] change winner
+- [X] disqualify without reason
 
-- [ ] limitar usos das keys
-- [X] validar nacionalidade
+- [ ] limitar usos das keys (so fiz pros players)
 
-- [ ] Documentação
 - [ ] SSL

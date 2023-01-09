@@ -23,10 +23,8 @@ class Caller(User):
     def __init__(self, nickname, parea_host, parea_port, pin, slot):
         super().__init__(nickname, parea_host, parea_port, pin, slot)
 
-        # Join playing area as caller
-        self.proto.join(self.sock, self.cc, "caller", nickname, Ascrypt.serialize_key(self.pub_key))
-
         self.handlers = {
+            "parea_public_key_response": self.handle_parea_public_key_response,
             "redirect": self.handle_redirect,
             "disqualify": self.handle_disqualify,
             "logs_response": self.handle_logs_response,
@@ -56,6 +54,17 @@ class Caller(User):
                 self.mb_wrong_winner = True
             elif num == 1:
                 self.mb_wrong_disqualify = True
+
+        self.proto.get_parea_public_key(self.sock)
+        print("Parea public key requested")
+
+
+    
+    def handle_parea_public_key_response(self, conn, data, signature):
+        print(f"{C.GREEN}Parea public key received{C.RESET}")
+        # Join playing area as player
+        self.proto.join(self.sock, self.cc, "caller", self.nickname, Ascrypt.serialize_key(self.pub_key), self.parea_pub_key)
+
 
 
     def handle_join_response(self, conn, data, signature):

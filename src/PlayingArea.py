@@ -44,7 +44,8 @@ class PlayingArea:
         self.private_key, self.public_key = Ascrypt.generate_key_pair()
         self.proto = BingoProtocol(self.private_key)
 
-        self.handlers = { 
+        self.handlers = {
+            "get_parea_public_key": self.handle_get_parea_public_key,
             "disqualify": self.handle_disqualify,
             "get_logs": self.handle_get_logs,
             "join": self.handle_join,
@@ -57,6 +58,13 @@ class PlayingArea:
             "winners": self.handle_winners,
             "final_winners": self.handle_final_winners
         }
+
+
+
+    def handle_get_parea_public_key(self, conn, data, signature):
+        print("Public key requested")
+        self.proto.parea_public_key_response(conn, Ascrypt.serialize_key(self.public_key))
+        print("Public key sent")
 
 
 
@@ -82,10 +90,12 @@ class PlayingArea:
 
 
     def handle_join(self, conn, data, signature):
+        # TODO desencryptar com priv_key
+
         if data["client"] == "player":
             self.current_id += 1
-            self.proto.join_response(conn, not self.playing, self.current_id, Ascrypt.serialize_key(self.public_key))
-            s = self.proto.join_response(None, not self.playing, self.current_id, Ascrypt.serialize_key(self.public_key))["signature"]
+            self.proto.join_response(conn, not self.playing, self.current_id)
+            s = self.proto.join_response(None, not self.playing, self.current_id)["signature"]
             self.log_event("Join response sent", None, s)
             if not self.playing:
                 self.users[conn] = (self.current_id, data["nickname"], data["public_key"])
@@ -97,8 +107,8 @@ class PlayingArea:
                 self.log_event("Join request denied", None, signature)
                 self.close_conn(conn)
         elif data["client"] == "caller":
-            self.proto.join_response(conn, self.caller is None, 0, Ascrypt.serialize_key(self.public_key))
-            s = self.proto.join_response(None, self.caller is None, 0, Ascrypt.serialize_key(self.public_key))["signature"]
+            self.proto.join_response(conn, self.caller is None, 0)
+            s = self.proto.join_response(None, self.caller is None, 0)["signature"]
             self.log_event("Join response sent", None, s)
 
             if self.caller is None:
@@ -251,15 +261,16 @@ class PlayingArea:
 
                 self.handlers[data["data"]["type"]](conn, data["data"], data["signature"])
             except Exception as e:
-               self.handle_exception(conn, e, data)
-            #    exit(1)
+                print(f"Exception: {e}")
+                self.handle_exception(conn, e, data)
+
         else:
             self.close_conn(conn)
 
 
     
     def verify_seq(self, conn, data) -> bool:
-        if data["data"]["type"] in ["join", "get_logs"]:
+        if data["data"]["type"] in ["join", "get_logs", "get_parea_public_key"]:
             return
         seq = data["data"]["seq"]
         if self.users[conn][0] != seq:
@@ -271,7 +282,7 @@ class PlayingArea:
         type_ = data["data"]["type"]
         if type_ not in self.handlers:
             raise BingoException("Unknown message type")
-        if type_ in ["join", "get_logs"]:
+        if type_ in ["join", "get_logs", "get_parea_public_key"]:
             return
         available_types = {
             "caller": [

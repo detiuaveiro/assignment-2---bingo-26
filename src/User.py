@@ -30,6 +30,7 @@ class User:
         self.deck = []
         self.players_info = {}
         self.playing = False
+        self.parea_pub_key = None
 
         self.parea_host = parea_host
         self.parea_port = parea_port
@@ -64,12 +65,12 @@ class User:
         data = self.proto.rcv(conn)
         if data:
             try:
-                if data["data"]["type"] == "join_response":
+                if data["data"]["type"] == "parea_public_key_response":
                     self.parea_pub_key = Ascrypt.deserialize_key(data["data"]["parea_public_key"])
                 self.verify_parea_signature(data)
-
                 self.handlers[data["data"]["type"]](conn, data["data"], data["signature"])
             except Exception as e:
+                print(f"Exception: {e}")
                 self.handle_exception(e, data)
 
         else:

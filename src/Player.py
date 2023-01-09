@@ -15,10 +15,8 @@ class Player(User):
     def __init__(self, nickname, parea_host, parea_port, pin, slot):
         super().__init__(nickname, parea_host, parea_port, pin, slot)
 
-        # Join playing area as player
-        self.proto.join(self.sock, self.cc, "player", nickname, Ascrypt.serialize_key(self.pub_key))
-
         self.handlers = {
+            "parea_public_key_response": self.handle_parea_public_key_response,
             "redirect": self.handle_redirect,
             "disqualify": self.handle_disqualify,
             "logs_response": self.handle_logs_response,
@@ -55,7 +53,16 @@ class Player(User):
                 self.mb_send_2_cards = True
             elif num == 5:
                 self.mb_wrong_winners = True
+
+        self.proto.get_parea_public_key(self.sock)
+        print("Parea public key requested")
             
+
+    def handle_parea_public_key_response(self, conn, data, signature):
+        print(f"{C.GREEN}Parea public key received{C.RESET}")
+        # Join playing area as player
+        self.proto.join(self.sock, self.cc, "player", self.nickname, Ascrypt.serialize_key(self.pub_key), self.parea_pub_key)
+
 
 
     def handle_start(self, conn, data, signature):
@@ -183,7 +190,9 @@ class Player(User):
             return
 
         if command == "1":
-            self.proto.join(self.sock, self.cc, "player", self.nickname, Ascrypt.serialize_key(self.pub_key))
+            self.priv_key, self.pub_key = Ascrypt.generate_key_pair()
+            self.proto.private_key = self.priv_key
+            self.proto.join(self.sock, self.cc, "player", self.nickname, Ascrypt.serialize_key(self.pub_key), self.parea_pub_key)
         elif command == "2":
             self.proto.get_logs(self.sock)
             print("Sent logs request")

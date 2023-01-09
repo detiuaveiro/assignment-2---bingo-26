@@ -63,7 +63,20 @@ class BingoProtocol:
 
 
     @msg_sender
-    def join(self, sock: socket.socket, cc: CitizenCard, client: str, nickname: str, public_key: str):
+    def get_parea_public_key(self, sock: socket.socket):
+        return {}
+
+
+    @msg_sender
+    def parea_public_key_response(self, sock: socket.socket, parea_public_key: str):
+        return {
+            "parea_public_key": parea_public_key
+        }
+
+
+    @msg_sender
+    def join(self, sock: socket.socket, cc: CitizenCard, client: str, nickname: str, public_key: str, parea_pub_key: bytes):
+        # TODO encryptar com parea_pub_key
         return {
             "client": client,
             "nickname": nickname,
@@ -73,11 +86,10 @@ class BingoProtocol:
 
 
     @msg_sender
-    def join_response(self, sock: socket.socket, accepted: bool, seq: int, parea_public_key: str):
+    def join_response(self, sock: socket.socket, accepted: bool, seq: int):
         return {
             "accepted": accepted, 
             "seq": seq,
-            "parea_public_key": parea_public_key
         }
 
 
