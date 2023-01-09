@@ -344,23 +344,19 @@ sequenceDiagram
 
 <br>
 
-# Segurança na autenticação
+## Segurança na autenticação
 TODO - rafa
 
 <br>
 
-# Segurança nas mensagens e seu conteúdo
+## Assinatura das mensagens trocadas
 
-### Assinatura
-
-- Tanto a *Playing Area*, como o *Caller* e todos os *Players* possuem uma chave privada e uma chave pública. A chave privada é utilizada para assinar todas as mensagens a serem enviadas e redirecionadas (no caso da *Playing Area*). A chave pública é utilizada pelas restantes entidades do jogo no processo de verificação das mensagens recebidas.
-
-- O tamanho da chave pública é de 2048 bits.
+- Tanto a *Playing Area*, como o *Caller* e todos os *Players* possuem uma chave privada e uma chave pública. A chave privada é utilizada para assinar todas as mensagens a serem enviadas e redirecionadas (no caso da *Playing Area*). A chave pública é utilizada pelas restantes entidades do jogo no processo de verificação das mensagens recebidas. O tamanho da chave pública é de 2048 bits.
 
 - O algoritmo utilizado neste processo foi o algoritmo RSA, juntamente com o padding *PSS* e a função de síntese *SHA256*.
 
-### Outras verificações implementadas
-TODO
+- Todas as mensagens trocadas entre as diferentes entidades, sempre que recebidas, são sempre sujeitas a um pro
+
 
 <br>
 
