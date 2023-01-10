@@ -6,7 +6,8 @@ import os
 from dotenv import load_dotenv
 
 load_dotenv()
-MISBEHAVE_PROBABILITY = float(os.getenv("MISBEHAVE_PROBABILITY")) + 0.1
+MISBEHAVE_PROBABILITY = float(os.getenv("MISBEHAVE_PROBABILITY"))
+if MISBEHAVE_PROBABILITY > 0: MISBEHAVE_PROBABILITY += 0.1 # more probable than Player cheats
 
 
 class C:
@@ -206,7 +207,7 @@ class Caller(User):
         self.cards_by_seq = []
         self.decks_by_seq = []
         self.winners_by_seq = []
-        print("\nGame ended\n")
+        print("\nNew game\n")
         print("Options:\n\
             1 - Start game\n\
             2 - Show logs\n\

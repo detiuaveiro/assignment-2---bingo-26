@@ -20,7 +20,7 @@ class color:
     FAIL = ('\033[91m', logging.ERROR) 
     ENDC = ('\033[0m', logging.INFO)
 
-logging.basicConfig(filename='playing_area.log', encoding='utf-8', level=logging.DEBUG, format='%(levelname)s: %(message)s')
+logging.basicConfig(filename='playing_area.log', encoding='utf-8', level=logging.DEBUG, format='%(message)s')
 
 class PlayingArea:
     
@@ -45,7 +45,7 @@ class PlayingArea:
         self.logs = []
 
         # asymmetric encryption
-        self.private_key, self.public_key = Ascrypt.generate_key_pair(3840)
+        self.private_key, self.public_key = Ascrypt.generate_key_pair(4096)
         self.proto = BingoProtocol(self.private_key)
 
         self.handlers = {
@@ -238,7 +238,7 @@ class PlayingArea:
         
 
     def reset(self):
-        print("\nGame ended\n")
+        print("\nNew game\n")
         self.users_by_seq = { k: v for k, v in self.users_by_seq.items() if k == 0 }
         self.users = { k: v for k, v in self.users.items() if v[0] == 0 }
         self.current_id = 0
@@ -340,6 +340,8 @@ class PlayingArea:
         print(f"Disqualifying player {taget_seq} for {reason}")
         for c in self.other_conns(conn):
             self.proto.disqualify(c, taget_seq, reason)
+            s = self.proto.disqualify(None, taget_seq, reason)["signature"]
+            self.log_event(f"Disqualifying player {taget_seq} for {reason}", None, s)
         self.close_conn(conn)
         self.reset()
 

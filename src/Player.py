@@ -177,7 +177,7 @@ class Player(User):
         self.players_info = {}
         self.playing = False
         self.card = None
-        print("\nGame ended\n")
+        print("\nNew game\n")
         print(
             "Options:\n\
             1 - Play again\n\

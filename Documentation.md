@@ -35,28 +35,25 @@
 | `requirements.txt` | Módulos Python necessários à execução do projeto |
 
 
-
-## Requisitos cumpridos
-TODO--------------------------------------------------------
-
 <br>
 
 ## Comunicação entre os módulos
-A comunicação entre os diferentes módulos desenvolvidos é feita através de sockets TCP/IP. Esta interação tem por base o envio e recessão de mensagens que seguem um protocolo bem definido.
+A comunicação entre os diferentes módulos desenvolvidos é feita através de sockets TCP/IP.
 
-As mensagens que constituiem o protocolo, bem como a assinatura dos seus conteúdos encontram-se no ficheiro `BingoProtocol.py`
+<div style="page-break-after: always;"></div>
 
-<br>
-
-## Protocolo desenvolvido
 ## 1. Novo jogo
 ```mermaid
 sequenceDiagram
     actor Caller
     participant PlayingArea
     actor PlayerX
+    Caller->>PlayingArea: get_parea_public_key
+    PlayingArea-->>Caller: parea_public_key_response
     Caller->>PlayingArea: join
     PlayingArea-->>Caller: join_response
+    PlayerX->>PlayingArea: get_parea_public_key
+    PlayingArea-->>PlayerX: parea_public_key_response
     PlayerX->>PlayingArea: join
     PlayingArea-->>PlayerX: join_response
     Caller->>PlayingArea: ready
@@ -67,13 +64,34 @@ sequenceDiagram
 
 <br>
 
-1. O *Caller* e o *Player*, com o objetivo de se autenticarem, começam por enviar uma mensagem de join para a *Playing Area*. Nesta mensagem cada user envia o seu tipo (*caller* ou *player*), o seu nickname, a sua chave pública e a chave pública do cartão de cidadão ou cartão virtual. A *Playing Area* ao receber a mensagem, guarda as informações dos utilizadores e de seguida responde com uma mensagem de *join_response* onde indica a sua chave pública e o *sequence number* atribuído ao utilizador. Ainda é passado um campo *accepted* que indica se o processo de join foi bem sucedido ou não.
+1. Enquanto um utilizador não recebe a confirmação de registo da *PlayingArea*, a sua chave pública não deve ser conhecida, pelo que este dado deve estar encriptado na mensagem de registo (*join*). Para esse efeito, o *Caller* e os *Players* começam por enviar uma mensagem do tipo *get_parea_public_key* para a *Playing Area*. Esta responde com uma *parea_public_key_response*, que inclui a sua chave pública. Deste modo, os utilizadores conseguem encriptar informações sensíveis no *join*, garantido confidencialidade, uma vez que só a PlayingArea possui a chave privada para desencriptar.
 
-2. O *Caller* após receber a mensagem de *join_response*, por meio de input do utilizador, envia uma mensagem do tipo *ready* para a *Playing Area* onde passa o seu *seq*. A *Playing Area* ao receber a mensagem e após todos os testes de verificação, responde com uma mensagem de *ready_response*, onde passa uma lista com as informações dos *players* que se conectaram (`seq, nickname, public_key`).
+2. As mensagens de registo (*join*) são assinadas digitalmente pelo utilizador, com a chave pública do `CITIZEN AUTHENTICATION CERTIFICATE`. A *PlayingArea* verifica a assinatura e a nacionalidade portuguesa, respondendo posteriormente com um *join response*.
 
-3. O *Caller* ao receber a mensagem de *ready_response*, envia uma mensagem de *start* para a *Playing Area* de modo a sinalizar o inicío do jogo. Por sua vez, quando recebida, esta mensagem será redirecionada para todos os *players*.
+3. Por intermédio de um input do utilizador, o *Caller* envia uma mensagem do tipo *ready* para a *Playing Area*, onde passa o seu *seq*. 
+
+4. A *Playing Area* devolve no *ready_response* uma lista com as informações dos *players* que se conectaram (`seq, nickname, public_key`).
+
+4. A mensagem *start* sinaliza o início do jogo e é redirecionada pela *PlayingArea* para todos os *players*.
 
 ```python
+- get_parea_public_key
+    msg = {
+        data: {
+            "type": "get_parea_public_key"
+        }
+        signature: str                  # Codificada para Base64
+    }
+
+- parea_public_key_response
+    msg = {
+        data: {
+            "type": "parea_public_key_response",
+            "parea_public_key": str     # Formato PEM
+        }
+        signature: str                  # Codificada para Base64
+    }
+
 - join 
     msg = {
         data: {
@@ -130,7 +148,7 @@ sequenceDiagram
 
 ```
 
-<br>
+<div style="page-break-after: always;"></div>
 
 ## 2. Troca de *cards*
 ```mermaid
@@ -149,8 +167,8 @@ sequenceDiagram
 
 <br>
 
-1. Cada *Player* após receber a mensagem de confirmação do início do jogo, gera uma chave simétrica, um IV e ainda o card a ser utilizado no jogo. Por fim, o *Player* envia uma mensagem do tipo *card* para a *Playing Area* onde passa o seu *seq*, o card gerado e a assinatura do conteúdo.
-2. A *Playing Area* ao receber a mensagem, verifica a assinatura e redireciona a mensagem para o *Caller* e para os *Players* adversários, de modo a que possam futuramente calcular o(s) winner(s).
+1. Cada *Player*, após receber a mensagem de confirmação do início do jogo, gera uma chave simétrica, um IV e ainda o card a ser utilizado no jogo. Por fim, envia uma mensagem do tipo *card* para a *Playing Area*, onde passa o seu *seq*, o card gerado e a assinatura do conteúdo.
+2. A *Playing Area*, além de verificar a assinatura, redireciona a mensagem para o *Caller* e para os *Players* adversários, para que ulteriormente possa(m) ser calculado(s) o(s) winner(s).
 
 
 ```python
@@ -171,15 +189,14 @@ sequenceDiagram
             "msg": {
                 "data": JSON,
                 "signature": str
-                # assinatura do emissor da mensagem (codificada para Base64)
+                # do emissor da mensagem (codificada para Base64)
             }
         }
         signature: str
-        # assinatura da PlayingArea (codificada para Base64)
+        # da PlayingArea (codificada para Base64)
     }
 ```
 
-<br>
 
 ## 3. Geração e encriptação do *deck*
 ```mermaid
@@ -203,15 +220,14 @@ sequenceDiagram
 <br>
 
 
-1. O *Caller* após receber os cards de todos os *players*, gera um *deck* aleatório (já suffled) e encripta cada um dos seus elementos com a chave simétrica gerada anteriormente. De seguida, envia uma mensagem do tipo *deck* para a *Playing Area* onde passa o seu *seq* e o *deck* gerado.
+1. O *Caller*, após receber os cards de todos os *players*, gera um *deck* aleatório (já baralhado) e encripta cada um dos seus elementos com a chave simétrica. De seguida, envia uma mensagem do tipo *deck* para a *Playing Area*, onde passa o seu *seq* e o *deck* gerado.
 
-2. A *Playing Area* ao receber a mensagem, verifica a assinatura e redireciona a mensagem para o primeiro player que deu *join * e para o *Caller*.
+2. A *Playing Area*, além de verificar a assinatura, redireciona a mensagem para o primeiro player registado e para o *Caller*.
    
-3. Um *Player* ao receber a mensagem do tipo *deck*, após todas as validações, encripta o *deck* recebido com a sua chave simétrica e no final dá *shuffle* do mesmo. Para concluir, envia uma mensagem do tipo *deck* para a *Playing Area* onde passa o seu *seq* e o *deck* processado. Esta por sua vez, redireciona a mensagem para o próximo *Player* que deu *join* e para o *Caller*.
+3. Cada *Player* encripta o *deck* recebido, com a sua chave simétrica e no final dá *shuffle* do mesmo. No final, envia uma mensagem do tipo *deck* para a *Playing Area*, onde passa o seu *seq* e o *deck* processado. A mensagem é redirecionada para o próximo *Player* que efetuou o *join* e para o *Caller*.
    
-4. Visto que o *Caller* também recebe os *decks* processados pelos *Players*, quando os receber todos, este envia o último recebido assinado através da mensagem do tipo *final_deck* para a *Playing Area*.
+4. O *Caller* também recebe os *decks* processados pelos *Players*, pelo que é responsável por enviar o último recebido (assinado), através de uma *final_deck*, para a *Playing Area*, que a redireciona para todos os *Players*.
 
-5. A *Playing Area* ao receber a mensagem do tipo *final_deck*, verifica a assinatura e redireciona a mensagem para todos os *Players* do jogo.
 
 ```python
 - deck | final_deck
@@ -226,7 +242,6 @@ sequenceDiagram
     }
 ```
 
-<br>
 
 ## 4. Troca de chaves simétricas
 
@@ -246,11 +261,11 @@ sequenceDiagram
 
 <br>
 
-1. Como já supracitado, o *Caller* também recebe os *decks* processados pelos *Players*. A partir do momento que os receber todos, este para além de enviar uma mensagem do tipo *final_deck* envia também uma mensagem do tipo *key* onde passa o seu *seq* e a chave simétrica utilizada na encriptação de cada elemento do *deck*.
+1. Além da mensagem do tipo *final_deck*, o *Caller* envia também uma do tipo *key*, onde passa o seu *seq* e a chave simétrica utilizada na encriptação de cada elemento do *deck*.
 
-2. À semelhança do *Caller*, os *Players* após receberam a mensagem de *final_deck*, enviam uma mensagem do tipo *key* para a *Playing Area* onde passam o seu *seq* e a sua chave simétrica.
+2. À semelhança do *Caller*, os *Players* enviam uma mensagem do tipo *key* para a *Playing Area*, passando o seu *seq* e a sua chave simétrica.
 
-3. Após a *Playing Area* receber as chaves simétricas de todos os *Users*, esta envia uma mensagem do tipo *keys_response* para todos os utilizadores. A ordem das chaves simétricas é contrária à ordem de encriptação dos *decks*.
+3. Após a *Playing Area* receber as chaves simétricas de todos os utilizadores, envia-lhes uma mensagem do tipo *keys_response*. A ordem das chaves simétricas listadas é contrária à ordem de encriptação dos *decks*.
 
 ```python
 - key
@@ -274,7 +289,7 @@ sequenceDiagram
     }
 ```
 
-<br>
+<div style="page-break-after: always;"></div>
 
 ## 5. Determinação dos vencedores
 
@@ -295,13 +310,13 @@ sequenceDiagram
 
 <br>
 
-1. Após os *Players* receberem a mensagem com a lista de chaves simétricas utilizadas na encriptação do deck, cada um deles desencripta o seu *deck* (igual para todos os players e caller) e determina o(s) winner(s) do jogo. De seguida, cada *Player* envia uma mensagem do tipo *winners* para a *Playing Area* onde passa o seu *seq* e a lista de vencedores que calculou.
+1. Cada *Player* desencripta o seu *deck* e determina o(s) winner(s) do jogo, enviando uma mensagem *winners*, de seguida, para a *Playing Area*.
 
-2. A *Playing Area* ao receber, procede à verificação da assinatura e redireciona a mensagem para o *Caller*.
+2. Aquando da receção dessas mensagens, a *Playing Area* procede à verificação da assinatura e redireciona a mensagem para o *Caller*.
 
-3. O *Caller* quando receber a mensagem do tipo *winners* vinda de todos os *Players* compara os winners recebidos com os que ele próprio determinou. Caso sejam iguais, envia uma mensagem do tipo *final_winners* para a *Playing Area* onde passa o seu *seq* e a lista de vencedores final, naturalmente com o conteúdo assinado.
+3. O *Caller* compara os winners recebidos com os que ele próprio determinou. Caso sejam iguais, envia uma mensagem do tipo *final_winners* para a *Playing Area*, onde inclui o seu *seq* e a lista de vencedores final.
 
-4. Por fim, a *Playing Area* ao receber a mensagem do tipo *final_winners* procede à verificação da assinatura e redireciona a mensagem para todos os *Players*, terminando assim uma ronda do jogo.
+4. Por fim, após a verificação da assinatura, a *Playing Area* redireciona a mensagem para todos os *Players*, terminando assim uma ronda do jogo.
 
 
 ```python
@@ -328,35 +343,29 @@ sequenceDiagram
 
 <br>
 
-<br>
-
-## Segurança na autenticação
-TODO - rafa -----------------------------------------------------
-
-<br>
 
 ## Assinatura das mensagens trocadas
 
-- Tanto a *Playing Area*, como o *Caller* e todos os *Players* possuem uma chave privada e uma chave pública. A chave privada é utilizada para assinar todas as mensagens a serem enviadas e redirecionadas (no caso da *Playing Area*). A chave pública é utilizada pelas restantes entidades do jogo no processo de verificação das mensagens recebidas. O tamanho da chave pública é de 2048 bits.
-
-- O algoritmo utilizado neste processo foi o algoritmo RSA, juntamente com padding *PSS* e a função de síntese *SHA256*.
-
-- Todas as mensagens trocadas entre as diferentes entidades são, sempre que recebidas, sujeitas a um processo de verificação da assinatura do emissor e um conjunto de mecanismos de verificação da existência de *cheating*, abordados no ponto seguinte.
+- Tanto a *Playing Area*, como o *Caller* e todos os *Players* possuem um par de chaves privada/pública. A chave privada é utilizada para assinar todas as mensagens a serem enviadas e redirecionadas (no caso da *Playing Area*). A chave pública é utilizada pelas restantes entidades do jogo, no ato de verificação das mensagens recebidas.
+- **Algoritmo**: RSA (Rivest-Shamir-Adleman)
+- **Padding**: PSS (Probabilistic Signature Scheme)
+- **Função de síntese**: SHA256 (Secure Hash Algorithm 256)
+- Todas as mensagens trocadas são sujeitas a processos de verificação da assinatura do emissor e de deteção de *cheating*.
 
 
 <br>
 
 ## *Cheaters*
 
-Um dos requisitos exigidos para este projeto era dar a possibilidade ao *Caller* e aos *Players* a possibilidade de cometer *cheating*, ocorrendo este com uma certa probabilidade. Assim, foi necessário o desenvolvimento de mecanismos de verificação e deteção de mensagens e conteúdos inválidos de modo que o seu emissor seja banido do jogo.
+Um dos requisitos do projeto consistia em induzir probabilisticamente uma batota, no lado do *Caller* ou de um *Player*. Posto isto, foi necessário o desenvolvimento de mecanismos de deteção de conteúdos inválidos, para que o seu emissor fosse banido do jogo.
 
-No jogo, o *cheating* pode ser feito de diferentes formas possíveis, nomeadamente:
+### Lista de batotas
 
 **(Player)**
-- envio de um card inválido, por exemplo com valores repetidos ou tamanho incorreto.
+- envio de um card inválido, por exemplo, com valores repetidos ou tamanho incorreto.
 - envio de mais do que um *card*.
-- envio de uma mensagem onde o *seq* não não corresponde ao atribuído pela *Playing Area*.
-- envio de uma mensagem com uma assinatura inválida.
+- envio de uma mensagem, onde o *seq* não não corresponde ao atribuído pela *Playing Area*.
+- envio de uma mensagem, com uma assinatura inválida.
 - envio dos *final winners* (operação apenas permitida pelo *Caller*).
 - envio de *winners* incorretos.
 
@@ -364,11 +373,9 @@ No jogo, o *cheating* pode ser feito de diferentes formas possíveis, nomeadamen
 - envio dos *final winners* incorretos.
 - desqualificação de um *Player* que não cometeu *cheating*.
 
-
 <br>
- 
 
-Perante uma situação de *cheating* cometido por um *Player*, a seguinte sequência de eventos ocorre:
+Perante uma batota de um *Player*, ocorre a seguinte sequência de eventos:
 
 ```mermaid
 sequenceDiagram
@@ -385,7 +392,7 @@ sequenceDiagram
 
 <br>
 
-No caso de um *Player* enviar uma mensagem que não pertence à sua entidade, as medidas adotas serão da responsabilidade da *Playing Area*, assim como mostra o diagrama de sequência abaixo.
+No caso de um *Player* enviar uma mensagem que não pertence à sua entidade, desrespeitando o protocolo, a desqualificação é da responsabilidade da própria *Playing Area*.
 
 ```mermaid
 sequenceDiagram
@@ -398,7 +405,25 @@ sequenceDiagram
     Cheater->>Cheater: Exit
 ```
 
+<div style="page-break-after: always;"></div>
+
+```python
+- disqualify
+msg = {
+    data: {
+        "type": "disqualify",
+        "target_seq": int,
+        "reason": str
+    }
+    signature: str  # Codificada para Base64 
+}
+```
+
 <br>
+
+## Logs
+
+>**Logs**: O ficheiro `playing_area.log` é escrito no formato solicitado pelos docentes, no enunciado do projeto. Porém, os *logs* apresentados no terminal, a partir do menu do utilizador, não incluem a assinatura da mensagem, pois esta excede o *buffer* do *stdin*.
 
 <br>
 

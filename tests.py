@@ -8,16 +8,31 @@ from src.CitizenCard import CitizenCard
 # x = os.getenv("USE_CARD")
 # print(bool(int(x)))
 
+import PyKCS11
 cc = CitizenCard("9792")
-cert = cc.export_cert()
+cert_obj = cc.session.findObjects([
+                            (PyKCS11.CKA_CLASS, PyKCS11.CKO_CERTIFICATE),
+                            (PyKCS11.CKA_LABEL, 'CITIZEN AUTHENTICATION CERTIFICATE')
+                            ])[0]
+cert_der_data = cert_obj.to_dict()['CKA_VALUE']
+cert = bytearray(cert_der_data).hex()
+priv_key, pub_key = Ascrypt.generate_key_pair(4096)
 
-_, other_pub_key = Ascrypt.generate_key_pair()
-msg = cert.encode("utf-8")
-print(len(msg))
-# priv_key, pub_key = Ascrypt.generate_key_pair(8192)
-# enc_msg = Ascrypt.encrypt_to_str(pub_key, msg)
-# dec_msg = Ascrypt.decrypt_from_str(priv_key, enc_msg)
-# print(msg == dec_msg)
+cert = bytearray(cert_der_data).hex()
+l = len(cert)
+n=10
+cert_lst = [cert[l*i//n:l*(i+1)//n] for i in range(n)]
+
+for part in cert_lst:
+    enc_msg = Ascrypt.encrypt_to_str(pub_key, part.encode("utf-8"))
+    dec_msg = Ascrypt.decrypt_from_str(priv_key, enc_msg).decode("utf-8")
+    print(part==dec_msg)
+
+
+#cert2=''.join(cert_lst)
+
+
+
 
 # # ------------------------------------------------------------------
 # import PyKCS11
